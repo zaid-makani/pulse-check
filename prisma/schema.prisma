@@ -1,0 +1,51 @@
+// PulseCheck Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(DEVELOPER)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusUpdates StatusUpdate[]
+}
+
+model StatusUpdate {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+
+  // Raw input
+  rawTranscript  String
+
+  // AI-extracted structured data (stored as JSON string)
+  completed      String   @default("[]") // JSON array
+  inProgress     String   @default("[]") // JSON array
+  blockers       String   @default("[]") // JSON array
+  needsHelp      String   @default("[]") // JSON array
+  sentiment      String?
+  riskFlags      String   @default("[]") // JSON array
+
+  // AI-generated summary
+  summary        String?
+
+  createdAt      DateTime @default(now())
+}
+
+enum Role {
+  DEVELOPER
+  TESTER
+  MANAGER
+  LEAD
+}
