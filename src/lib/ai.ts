@@ -135,3 +135,94 @@ export async function generateTeamDigest(updates: Array<{ userName: string; summ
 
   return message.content[0].type === 'text' ? message.content[0].text : 'Unable to generate digest.'
 }
+
+export interface WorkItemSuggestion {
+  title: string
+  suggestedOwner: string | null
+  suggestedStatus: string
+  suggestedBlocker: string | null
+  suggestedJira: string | null
+  confidence: 'high' | 'medium' | 'low'
+  sourceUpdateIds: string[]
+}
+
+const WORK_ITEM_PROMPT = `You are an AI assistant that extracts concrete work items/deliverables from team status updates.
+
+Analyze the status updates and extract discrete, trackable work items. Focus on:
+- Concrete tasks or features being worked on
+- Bug fixes or issues being addressed
+- Projects or milestones mentioned
+- Deliverables with clear outcomes
+
+Skip routine activities like:
+- Meetings or standups
+- Code reviews (unless fixing specific issues)
+- General communication
+- Administrative tasks
+
+For each work item, determine:
+1. title: A clear, actionable title for the deliverable
+2. suggestedOwner: The user ID of who appears to own this work (or null)
+3. suggestedStatus: One of "Backlog", "In Progress", "In Review", "QA", "Done", "Blocked"
+4. suggestedBlocker: Any blocker notes (or null)
+5. suggestedJira: Any JIRA/ticket link mentioned (or null)
+6. confidence: "high" if clearly stated, "medium" if inferred, "low" if uncertain
+7. sourceUpdateIds: Array of update IDs this was extracted from
+
+Respond ONLY with a valid JSON object:
+{
+  "suggestions": [
+    {
+      "title": "Implement user authentication",
+      "suggestedOwner": "user-id-here",
+      "suggestedStatus": "In Progress",
+      "suggestedBlocker": "Waiting on API team",
+      "suggestedJira": "https://jira.example.com/ABC-123",
+      "confidence": "high",
+      "sourceUpdateIds": ["update-id-1"]
+    }
+  ]
+}
+
+If no clear work items can be extracted, return {"suggestions": []}.
+Do not include any text outside the JSON object.`
+
+export interface UpdateSummary {
+  id: string
+  userId: string
+  userName: string
+  completed: string[]
+  inProgress: string[]
+  blockers: string[]
+  summary: string | null
+}
+
+export async function suggestWorkItems(updates: UpdateSummary[]): Promise<WorkItemSuggestion[]> {
+  if (updates.length === 0) {
+    return []
+  }
+
+  const updatesText = updates
+    .map((u) => `Update ID: ${u.id}\nUser ID: ${u.userId}\nUser: ${u.userName}\nCompleted: ${u.completed.join(', ') || 'None'}\nIn Progress: ${u.inProgress.join(', ') || 'None'}\nBlockers: ${u.blockers.join(', ') || 'None'}\nSummary: ${u.summary || 'N/A'}`)
+    .join('\n\n---\n\n')
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    messages: [
+      {
+        role: 'user',
+        content: `${WORK_ITEM_PROMPT}\n\nStatus Updates:\n${updatesText}`,
+      },
+    ],
+  })
+
+  const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+  try {
+    const parsed = JSON.parse(responseText) as { suggestions: WorkItemSuggestion[] }
+    return parsed.suggestions || []
+  } catch {
+    return []
+  }
+}

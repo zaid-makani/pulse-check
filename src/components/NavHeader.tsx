@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Activity, Mic, User, LayoutDashboard } from 'lucide-react'
+import { Activity, Mic, User, LayoutGrid, LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/submit', label: 'Submit', icon: Mic },
   { href: '/my-updates', label: 'My Updates', icon: User },
+  { href: '/views', label: 'Views', icon: LayoutGrid },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ]
 

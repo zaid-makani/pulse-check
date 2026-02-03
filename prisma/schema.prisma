@@ -19,6 +19,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   statusUpdates StatusUpdate[]
+  views         View[]
 }
 
 model StatusUpdate {
@@ -48,4 +49,38 @@ enum Role {
   TESTER
   MANAGER
   LEAD
+}
+
+model View {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  createdById String
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  columns     ViewColumn[]
+  items       WorkItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ViewColumn {
+  id        String   @id @default(cuid())
+  viewId    String
+  view      View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  name      String
+  type      String   // text, number, date, url, select, person
+  options   String   @default("[]") // JSON for select options
+  isSystem  Boolean  @default(false)
+  order     Int
+  createdAt DateTime @default(now())
+}
+
+model WorkItem {
+  id        String   @id @default(cuid())
+  viewId    String
+  view      View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  values    String   @default("{}") // JSON: {columnId: value}
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
