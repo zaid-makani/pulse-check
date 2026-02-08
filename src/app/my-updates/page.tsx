@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { formatDistanceToNow, format } from 'date-fns'
+import { useSession } from 'next-auth/react'
+import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Table,
   TableBody,
@@ -263,6 +263,7 @@ function UpdateTableRow({
 }
 
 export default function MyUpdatesPage() {
+  const { data: session } = useSession()
   const [users, setUsers] = useState<User[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [updates, setUpdates] = useState<StatusUpdate[]>([])
@@ -273,18 +274,22 @@ export default function MyUpdatesPage() {
   const [editingUpdate, setEditingUpdate] = useState<StatusUpdate | null>(null)
   const [deletingUpdateId, setDeletingUpdateId] = useState<string | null>(null)
 
-  // Fetch users
+  // Fetch users and default to logged-in user
   useEffect(() => {
     fetch('/api/users')
       .then((res) => res.json())
       .then((data) => {
         setUsers(data)
-        if (data.length > 0) {
+        // Default to logged-in user, or first user if not found
+        const loggedInUser = data.find((u: User) => u.id === session?.user?.id)
+        if (loggedInUser) {
+          setSelectedUserId(loggedInUser.id)
+        } else if (data.length > 0) {
           setSelectedUserId(data[0].id)
         }
       })
       .catch(console.error)
-  }, [])
+  }, [session?.user?.id])
 
   // Fetch updates for selected user
   useEffect(() => {

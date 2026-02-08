@@ -1,8 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { prisma } from '@/lib/db'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
+
+export { anthropic }
 
 export interface ExtractedStatus {
   completed: string[]
@@ -224,5 +227,90 @@ export async function suggestWorkItems(updates: UpdateSummary[]): Promise<WorkIt
     return parsed.suggestions || []
   } catch {
     return []
+  }
+}
+
+export interface ChatContext {
+  systemPrompt: string
+  usersCount: number
+  updatesCount: number
+}
+
+export async function buildChatContext(days: number = 7): Promise<ChatContext> {
+  const dateFilter = new Date()
+  dateFilter.setDate(dateFilter.getDate() - days)
+
+  const [users, updates] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.statusUpdate.findMany({
+      where: {
+        createdAt: { gte: dateFilter },
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ])
+
+  // Build team members section
+  const teamMembersSection = users
+    .map((u) => `- ${u.name} (${u.email}) - Role: ${u.role}`)
+    .join('\n')
+
+  // Build status updates section
+  const updatesSection = updates
+    .map((update) => {
+      const date = update.createdAt.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      const completed = JSON.parse(update.completed) as string[]
+      const inProgress = JSON.parse(update.inProgress) as string[]
+      const blockers = JSON.parse(update.blockers) as string[]
+
+      return `### ${update.user.name} - ${date}
+Summary: ${update.summary || 'No summary'}
+Completed: ${completed.length > 0 ? completed.join(', ') : 'None'}
+In Progress: ${inProgress.length > 0 ? inProgress.join(', ') : 'None'}
+Blockers: ${blockers.length > 0 ? blockers.join(', ') : 'None'}
+Sentiment: ${update.sentiment || 'neutral'}`
+    })
+    .join('\n\n')
+
+  const systemPrompt = `You are an AI assistant for PulseCheck, helping managers understand team status.
+
+## Current Team Members
+${teamMembersSection || 'No team members found.'}
+
+## Recent Status Updates (Last ${days} Days)
+
+${updatesSection || 'No recent status updates.'}
+
+## Guidelines
+- Reference specific team members and updates when answering questions
+- Highlight blockers and risks proactively
+- Use markdown for clarity (bullet points, bold for names, etc.)
+- Be concise but thorough
+- If asked about something not in the data, say you don't have that information
+- When listing blockers or issues, group by team member or type as appropriate`
+
+  return {
+    systemPrompt,
+    usersCount: users.length,
+    updatesCount: updates.length,
   }
 }
