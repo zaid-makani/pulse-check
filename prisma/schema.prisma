@@ -17,6 +17,7 @@ model User {
   role                Role     @default(DEVELOPER)
   avatarUrl           String?
   onboardingCompleted Boolean  @default(false)
+  slackUserId         String?  // Linked Slack user ID
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -86,17 +87,19 @@ enum TeamRole {
 }
 
 model TeamSettings {
-  id             String   @id @default(cuid())
-  teamId         String   @unique
-  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  reminderTime   String   @default("16:00")        // When to send reminders
-  reminderDays   String   @default("[1,2,3,4,5]")  // Days of week (Mon-Fri)
-  digestEnabled  Boolean  @default(true)
-  digestSchedule String   @default("daily")        // daily, weekly
-  digestTime     String   @default("09:00")        // When to send digest
-  timezone       String   @default("UTC")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  teamId          String   @unique
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  reminderTime    String   @default("16:00")        // When to send reminders
+  reminderDays    String   @default("[1,2,3,4,5]")  // Days of week (Mon-Fri)
+  digestEnabled   Boolean  @default(true)
+  digestSchedule  String   @default("daily")        // daily, weekly
+  digestTime      String   @default("09:00")        // When to send digest
+  timezone        String   @default("UTC")
+  slackChannelId  String?  // Slack channel for digests
+  slackWebhookUrl String?  // Incoming webhook for posting
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model View {
@@ -133,4 +136,18 @@ model WorkItem {
   order     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Slack workspace installation
+model SlackInstallation {
+  id              String   @id @default(cuid())
+  teamId          String   // Slack team/workspace ID
+  teamName        String
+  botToken        String   // Bot OAuth token
+  botUserId       String
+  installedBy     String   // Slack user ID who installed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([teamId])
 }

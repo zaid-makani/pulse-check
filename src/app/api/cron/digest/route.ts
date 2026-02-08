@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendDigestEmail } from '@/lib/email'
+import { postDigestToSlack } from '@/lib/slack'
 
 /**
  * POST /api/cron/digest
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
     })
 
     let emailsSent = 0
-    const results: Array<{ team: string; managers: number; schedule: string }> = []
+    let slackMessagesSent = 0
+    const results: Array<{ team: string; managers: number; schedule: string; slack: boolean }> = []
 
     for (const settings of teamSettings) {
       // Check if it's the right time/day for this digest
@@ -166,16 +168,36 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Post to Slack if configured
+      let slackSent = false
+      if (settings.slackWebhookUrl) {
+        try {
+          await postDigestToSlack({
+            webhookUrl: settings.slackWebhookUrl,
+            teamName: settings.team.name,
+            summary,
+            stats,
+            memberUpdates,
+          })
+          slackMessagesSent++
+          slackSent = true
+        } catch (error) {
+          console.error(`Failed to post digest to Slack for ${settings.team.name}:`, error)
+        }
+      }
+
       results.push({
         team: settings.team.name,
         managers: managers.length,
         schedule: settings.digestSchedule,
+        slack: slackSent,
       })
     }
 
     return NextResponse.json({
       success: true,
       emailsSent,
+      slackMessagesSent,
       results,
       timestamp: now.toISOString(),
     })

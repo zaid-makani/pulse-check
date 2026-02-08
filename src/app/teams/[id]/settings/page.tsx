@@ -19,6 +19,7 @@ import {
   Bell,
   Mail,
   Clock,
+  Hash,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -62,6 +63,7 @@ interface NotificationSettings {
   digestSchedule: 'daily' | 'weekly'
   digestTime: string
   timezone: string
+  slackWebhookUrl: string
 }
 
 const DAYS_OF_WEEK = [
@@ -120,6 +122,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
     digestSchedule: 'daily',
     digestTime: '09:00',
     timezone: 'UTC',
+    slackWebhookUrl: '',
   })
   const [isLoadingSettings, setIsLoadingSettings] = useState(true)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
@@ -142,6 +145,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
           digestSchedule: data.digestSchedule || 'daily',
           digestTime: data.digestTime || '09:00',
           timezone: data.timezone || 'UTC',
+          slackWebhookUrl: data.slackWebhookUrl || '',
         })
       }
     } catch (err) {
@@ -695,6 +699,43 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  <hr className="border-slate-200" />
+
+                  {/* Slack Integration */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-slate-500" />
+                      Slack Integration
+                    </h4>
+                    <p className="text-sm text-slate-500">
+                      Post team digests to a Slack channel using an incoming webhook.
+                    </p>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">Slack Webhook URL</label>
+                      <Input
+                        type="url"
+                        placeholder="https://hooks.slack.com/services/..."
+                        value={notificationSettings.slackWebhookUrl}
+                        onChange={(e) => setNotificationSettings(prev => ({
+                          ...prev,
+                          slackWebhookUrl: e.target.value
+                        }))}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Create an incoming webhook in your Slack workspace settings.{' '}
+                        <a
+                          href="https://api.slack.com/messaging/webhooks"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-violet-600 hover:underline"
+                        >
+                          Learn more
+                        </a>
+                      </p>
+                    </div>
                   </div>
 
                   {/* Save Button */}

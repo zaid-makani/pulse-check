@@ -78,6 +78,7 @@ export async function PATCH(
       digestSchedule,
       digestTime,
       timezone,
+      slackWebhookUrl,
     } = body
 
     // Validate time format (HH:MM)
@@ -102,6 +103,7 @@ export async function PATCH(
     if (digestSchedule !== undefined) updateData.digestSchedule = digestSchedule
     if (digestTime !== undefined) updateData.digestTime = digestTime
     if (timezone !== undefined) updateData.timezone = timezone
+    if (slackWebhookUrl !== undefined) updateData.slackWebhookUrl = slackWebhookUrl || null
 
     // Upsert settings
     const settings = await prisma.teamSettings.upsert({
