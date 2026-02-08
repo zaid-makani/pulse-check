@@ -17,18 +17,17 @@ import { Loader2 } from 'lucide-react'
 interface CreateViewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  users: Array<{ id: string; name: string }>
+  teamId?: string
   onCreated: (view: unknown) => void
 }
 
-export function CreateViewDialog({ open, onOpenChange, users, onCreated }: CreateViewDialogProps) {
+export function CreateViewDialog({ open, onOpenChange, teamId, onCreated }: CreateViewDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [createdById, setCreatedById] = useState(users[0]?.id || '')
   const [isCreating, setIsCreating] = useState(false)
 
   const handleCreate = async () => {
-    if (!name.trim() || !createdById) return
+    if (!name.trim()) return
 
     setIsCreating(true)
     try {
@@ -38,7 +37,7 @@ export function CreateViewDialog({ open, onOpenChange, users, onCreated }: Creat
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || null,
-          createdById,
+          teamId,
         }),
       })
 
@@ -86,27 +85,13 @@ export function CreateViewDialog({ open, onOpenChange, users, onCreated }: Creat
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium block mb-2">Created By</label>
-            <select
-              className="w-full px-3 py-2 border rounded-md bg-white"
-              value={createdById}
-              onChange={(e) => setCreatedById(e.target.value)}
-            >
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={isCreating || !name.trim() || !createdById}>
+          <Button onClick={handleCreate} disabled={isCreating || !name.trim()}>
             {isCreating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />

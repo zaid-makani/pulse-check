@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ViewCard } from '@/components/views/ViewCard'
 import { CreateViewDialog } from '@/components/views/CreateViewDialog'
+import { useTeam } from '@/components/TeamProvider'
 import { Plus, LayoutGrid } from 'lucide-react'
 
 interface View {
@@ -23,22 +24,17 @@ interface View {
   items?: unknown[]
 }
 
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
 export default function ViewsPage() {
   const router = useRouter()
+  const { currentTeam } = useTeam()
   const [views, setViews] = useState<View[]>([])
-  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   const fetchViews = useCallback(async () => {
     try {
-      const response = await fetch('/api/views')
+      const teamParam = currentTeam ? `?teamId=${currentTeam.id}` : ''
+      const response = await fetch(`/api/views${teamParam}`)
       if (response.ok) {
         const data = await response.json()
         setViews(data)
@@ -46,23 +42,12 @@ export default function ViewsPage() {
     } catch (error) {
       console.error('Error fetching views:', error)
     }
-  }, [])
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
-  }, [])
+  }, [currentTeam])
 
   useEffect(() => {
-    Promise.all([fetchViews(), fetchUsers()]).finally(() => setIsLoading(false))
-  }, [fetchViews, fetchUsers])
+    setIsLoading(true)
+    fetchViews().finally(() => setIsLoading(false))
+  }, [fetchViews])
 
   const handleViewCreated = (view: unknown) => {
     setViews((prev) => [view as View, ...prev])
@@ -116,7 +101,7 @@ export default function ViewsPage() {
         <CreateViewDialog
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
-          users={users}
+          teamId={currentTeam?.id}
           onCreated={handleViewCreated}
         />
       </div>

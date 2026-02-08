@@ -236,34 +236,58 @@ export interface ChatContext {
   updatesCount: number
 }
 
-export async function buildChatContext(days: number = 7): Promise<ChatContext> {
+export async function buildChatContext(days: number = 7, teamId?: string): Promise<ChatContext> {
   const dateFilter = new Date()
   dateFilter.setDate(dateFilter.getDate() - days)
 
-  const [users, updates] = await Promise.all([
-    prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.statusUpdate.findMany({
-      where: {
-        createdAt: { gte: dateFilter },
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
+  // Build queries based on whether we have a team filter
+  const usersQuery = teamId
+    ? prisma.teamMembership.findMany({
+        where: { teamId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
           },
         },
+        orderBy: { user: { name: 'asc' } },
+      }).then(memberships => memberships.map(m => m.user))
+    : prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+        orderBy: { name: 'asc' },
+      })
+
+  const updatesQuery = prisma.statusUpdate.findMany({
+    where: {
+      createdAt: { gte: dateFilter },
+      ...(teamId && {
+        user: {
+          teamMemberships: {
+            some: { teamId },
+          },
+        },
+      }),
+    },
+    include: {
+      user: {
+        select: {
+          name: true,
+        },
       },
-      orderBy: { createdAt: 'desc' },
-    }),
-  ])
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const [users, updates] = await Promise.all([usersQuery, updatesQuery])
 
   // Build team members section
   const teamMembersSection = users

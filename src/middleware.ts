@@ -74,11 +74,13 @@ export const config = {
     '/views/:path*',
     '/chat/:path*',
     '/settings/:path*',
+    '/teams/:path*',
     '/api/status/:path*',
     '/api/users/:path*',
     '/api/digest/:path*',
     '/api/chat/:path*',
     '/api/views/:path*',
     '/api/transcribe/:path*',
+    '/api/teams/:path*',
   ]
 }

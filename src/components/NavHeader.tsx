@@ -6,6 +6,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { Activity, Mic, User, LayoutGrid, LayoutDashboard, MessageCircle, LogOut, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { TeamSelector } from '@/components/TeamSelector'
 
 const navItems = [
   { href: '/submit', label: 'Submit', icon: Mic },
@@ -43,7 +44,7 @@ export function NavHeader() {
           </Link>
 
           {/* Navigation */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               const Icon = item.icon
@@ -52,26 +53,29 @@ export function NavHeader() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200',
+                    'relative flex items-center gap-1.5 px-2.5 py-2 text-sm font-medium rounded-lg transition-all duration-200',
                     isActive
                       ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   )}
+                  title={item.label}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="hidden lg:inline">{item.label}</span>
                 </Link>
               )
             })}
           </nav>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-3">
+          {/* Team Selector & User Menu */}
+          <div className="flex items-center gap-4">
+            {session?.user && <TeamSelector />}
+
             {status === 'loading' ? (
               <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
             ) : session?.user ? (
-              <>
-                <div className="hidden sm:flex flex-col items-end">
+              <div className="flex items-center gap-3">
+                <div className="hidden lg:flex flex-col items-end">
                   <span className="text-sm font-medium text-slate-900">
                     {session.user.name}
                   </span>
@@ -91,7 +95,7 @@ export function NavHeader() {
                   <LogOut className="h-4 w-4" />
                   <span className="hidden sm:inline ml-2">Sign out</span>
                 </Button>
-              </>
+              </div>
             ) : (
               <Link href="/login">
                 <Button variant="outline" size="sm">

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ChatMessage } from '@/components/chat/ChatMessage'
 import { ChatInput } from '@/components/chat/ChatInput'
+import { useTeam } from '@/components/TeamProvider'
 import { MessageCircle, Sparkles } from 'lucide-react'
 
 interface Message {
@@ -20,6 +21,7 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 export default function ChatPage() {
+  const { currentTeam } = useTeam()
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -32,7 +34,14 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  // Reset messages when team changes
+  useEffect(() => {
+    setMessages([])
+  }, [currentTeam?.id])
+
   const sendMessage = async (content: string) => {
+    if (!currentTeam) return
+
     const userMessage: Message = { role: 'user', content }
     setMessages((prev) => [...prev, userMessage])
     setIsStreaming(true)
@@ -48,6 +57,7 @@ export default function ChatPage() {
           message: content,
           history: messages,
           days: 7,
+          teamId: currentTeam.id,
         }),
       })
 
@@ -110,8 +120,12 @@ export default function ChatPage() {
             <MessageCircle className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Team Chat</h1>
-            <p className="text-sm text-slate-500">Ask questions about your team&apos;s status</p>
+            <h1 className="text-xl font-bold text-slate-900">
+              {currentTeam ? `${currentTeam.name} Chat` : 'Team Chat'}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {currentTeam ? 'Ask questions about your team\'s status' : 'Select a team to start chatting'}
+            </p>
           </div>
         </div>
 
@@ -159,7 +173,7 @@ export default function ChatPage() {
           )}
 
           {/* Input */}
-          <ChatInput onSend={sendMessage} disabled={isStreaming} />
+          <ChatInput onSend={sendMessage} disabled={isStreaming || !currentTeam} />
         </Card>
       </div>
     </div>

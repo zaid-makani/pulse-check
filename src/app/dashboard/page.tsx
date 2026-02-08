@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusCard } from '@/components/StatusCard'
 import { TeamPulseTable } from '@/components/TeamPulseTable'
+import { useTeam } from '@/components/TeamProvider'
 import { RefreshCw, Loader2, Users, AlertTriangle, TrendingUp } from 'lucide-react'
 
 interface StatusUpdate {
@@ -53,6 +54,7 @@ interface TeamMember {
 }
 
 export default function DashboardPage() {
+  const { currentTeam } = useTeam()
   const [updates, setUpdates] = useState<StatusUpdate[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
@@ -61,15 +63,30 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
+    if (!currentTeam) {
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
+      const teamParam = `teamId=${currentTeam.id}`
       const [updatesRes, usersRes] = await Promise.all([
-        fetch('/api/status?days=7'),
-        fetch('/api/users'),
+        fetch(`/api/status?days=7&${teamParam}`),
+        fetch(`/api/users?${teamParam}`),
       ])
 
       const updatesData = await updatesRes.json()
       const usersData = await usersRes.json()
+
+      // Handle error responses
+      if (updatesData.error || usersData.error) {
+        console.error('API Error:', updatesData.error || usersData.error)
+        setUpdates([])
+        setUsers([])
+        setTeamMembers([])
+        return
+      }
 
       setUpdates(updatesData)
       setUsers(usersData)
@@ -101,16 +118,20 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [currentTeam])
 
   useEffect(() => {
     fetchData()
+    // Reset digest when team changes
+    setDigest('')
   }, [fetchData])
 
   const generateDigest = async () => {
+    if (!currentTeam) return
+
     setIsLoadingDigest(true)
     try {
-      const response = await fetch('/api/digest?days=7')
+      const response = await fetch(`/api/digest?days=7&teamId=${currentTeam.id}`)
       const data = await response.json()
       setDigest(data.digest)
     } catch (error) {
@@ -133,10 +154,14 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Team Dashboard</h1>
-            <p className="text-muted-foreground">Team status at a glance</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              {currentTeam ? `${currentTeam.name} Dashboard` : 'Team Dashboard'}
+            </h1>
+            <p className="text-muted-foreground">
+              {currentTeam ? 'Team status at a glance' : 'Select or create a team to get started'}
+            </p>
           </div>
-          <Button onClick={fetchData} variant="outline" disabled={isLoading}>
+          <Button onClick={fetchData} variant="outline" disabled={isLoading || !currentTeam}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>

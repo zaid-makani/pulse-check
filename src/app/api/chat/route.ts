@@ -1,10 +1,21 @@
 import { NextRequest } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { anthropic, buildChatContext } from '@/lib/ai'
+import { prisma } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const body = await request.json()
-    const { message, history = [], days = 7 } = body
+    const { message, history = [], days = 7, teamId } = body
 
     if (!message) {
       return new Response(JSON.stringify({ error: 'message is required' }), {
@@ -13,8 +24,22 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // If teamId provided, verify membership
+    if (teamId) {
+      const membership = await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId: session.user.id, teamId } },
+      })
+
+      if (!membership) {
+        return new Response(JSON.stringify({ error: 'Not a member of this team' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
     // Build context with team data
-    const { systemPrompt } = await buildChatContext(days)
+    const { systemPrompt } = await buildChatContext(days, teamId)
 
     // Build messages array with history
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [

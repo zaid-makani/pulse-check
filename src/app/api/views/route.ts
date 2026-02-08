@@ -1,11 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { SYSTEM_COLUMNS } from '@/lib/view-columns'
 
-// GET /api/views - List all views
-export async function GET() {
+// GET /api/views - List views (filtered by team if teamId provided)
+export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const teamId = searchParams.get('teamId')
+
+    // Build where clause
+    let whereClause = {}
+
+    if (teamId) {
+      // Verify user is a member of this team
+      const membership = await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId: session.user.id, teamId } },
+      })
+
+      if (!membership) {
+        return NextResponse.json({ error: 'Not a member of this team' }, { status: 403 })
+      }
+
+      whereClause = { teamId }
+    }
+
     const views = await prisma.view.findMany({
+      where: whereClause,
       include: {
         createdBy: {
           select: {
@@ -34,11 +61,27 @@ export async function GET() {
 // POST /api/views - Create a new view with system columns
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { name, description, createdById } = body
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (!name || !createdById) {
-      return NextResponse.json({ error: 'name and createdById are required' }, { status: 400 })
+    const body = await request.json()
+    const { name, description, teamId } = body
+
+    if (!name) {
+      return NextResponse.json({ error: 'name is required' }, { status: 400 })
+    }
+
+    // If teamId provided, verify membership
+    if (teamId) {
+      const membership = await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId: session.user.id, teamId } },
+      })
+
+      if (!membership) {
+        return NextResponse.json({ error: 'Not a member of this team' }, { status: 403 })
+      }
     }
 
     // Create view with system columns in a transaction
@@ -47,7 +90,8 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description,
-          createdById,
+          createdById: session.user.id,
+          teamId: teamId || null,
         },
       })
 

@@ -1,18 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { VoiceRecorder } from '@/components/VoiceRecorder'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, Send, Check, AlertCircle, History } from 'lucide-react'
-
-interface User {
-  id: string
-  name: string
-  email: string
-}
 
 interface SubmittedUpdate {
   summary: string
@@ -22,25 +17,12 @@ interface SubmittedUpdate {
 }
 
 export default function SubmitPage() {
-  const [users, setUsers] = useState<User[]>([])
-  const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const { data: session } = useSession()
   const [transcript, setTranscript] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submittedUpdate, setSubmittedUpdate] = useState<SubmittedUpdate | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/users')
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data)
-        if (data.length > 0) {
-          setSelectedUserId(data[0].id)
-        }
-      })
-      .catch(console.error)
-  }, [])
 
   const handleTranscript = (text: string) => {
     setError(null)
@@ -52,7 +34,7 @@ export default function SubmitPage() {
   }
 
   const handleSubmit = async () => {
-    if (!transcript.trim() || !selectedUserId) return
+    if (!transcript.trim()) return
 
     setIsSubmitting(true)
     setError(null)
@@ -61,7 +43,6 @@ export default function SubmitPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: selectedUserId,
           transcript: transcript.trim(),
         }),
       })
@@ -92,8 +73,6 @@ export default function SubmitPage() {
     setSubmitted(false)
     setSubmittedUpdate(null)
   }
-
-  const selectedUser = users.find((u) => u.id === selectedUserId)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-8">
@@ -175,23 +154,16 @@ export default function SubmitPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* User Selection */}
-              {users.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-slate-700 block mb-2">
-                    Submitting as:
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-md bg-white"
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                  >
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </option>
-                    ))}
-                  </select>
+              {/* Submitting as indicator */}
+              {session?.user && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-sm font-medium">
+                    {session.user.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{session.user.name}</p>
+                    <p className="text-xs text-slate-500">{session.user.email}</p>
+                  </div>
                 </div>
               )}
 

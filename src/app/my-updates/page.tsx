@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useTeam } from '@/components/TeamProvider'
 import {
   Table,
   TableBody,
@@ -264,6 +265,7 @@ function UpdateTableRow({
 
 export default function MyUpdatesPage() {
   const { data: session } = useSession()
+  const { currentTeam } = useTeam()
   const [users, setUsers] = useState<User[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [updates, setUpdates] = useState<StatusUpdate[]>([])
@@ -274,11 +276,29 @@ export default function MyUpdatesPage() {
   const [editingUpdate, setEditingUpdate] = useState<StatusUpdate | null>(null)
   const [deletingUpdateId, setDeletingUpdateId] = useState<string | null>(null)
 
-  // Fetch users and default to logged-in user
+  // Check if current user is LEAD or MANAGER (can view others' updates)
+  const canViewOthers = currentTeam?.role === 'LEAD' || currentTeam?.role === 'MANAGER'
+
+  // Fetch users (only if can view others) and default to logged-in user
   useEffect(() => {
-    fetch('/api/users')
+    // If not a manager/lead, just use logged-in user
+    if (!canViewOthers) {
+      if (session?.user?.id) {
+        setSelectedUserId(session.user.id)
+        setUsers([])
+      }
+      return
+    }
+
+    // Managers/leads can fetch team members
+    const teamParam = currentTeam ? `?teamId=${currentTeam.id}` : ''
+    fetch(`/api/users${teamParam}`)
       .then((res) => res.json())
       .then((data) => {
+        if (data.error) {
+          setUsers([])
+          return
+        }
         setUsers(data)
         // Default to logged-in user, or first user if not found
         const loggedInUser = data.find((u: User) => u.id === session?.user?.id)
@@ -289,7 +309,7 @@ export default function MyUpdatesPage() {
         }
       })
       .catch(console.error)
-  }, [session?.user?.id])
+  }, [session?.user?.id, currentTeam?.id, canViewOthers])
 
   // Fetch updates for selected user
   useEffect(() => {
@@ -299,6 +319,10 @@ export default function MyUpdatesPage() {
     fetch(`/api/status?userId=${selectedUserId}&days=30`)
       .then((res) => res.json())
       .then((data) => {
+        if (data.error) {
+          setUpdates([])
+          return
+        }
         setUpdates(data)
       })
       .catch(console.error)
@@ -337,8 +361,8 @@ export default function MyUpdatesPage() {
           </Link>
         </div>
 
-        {/* User Selector */}
-        {users.length > 0 && (
+        {/* User Selector - Only shown for managers/leads */}
+        {canViewOthers && users.length > 0 && (
           <Card className="mb-6">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Viewing updates for</CardTitle>
