@@ -17,7 +17,7 @@ const navItems = [
 ]
 
 // Pages where NavHeader should be hidden
-const hiddenOnPaths = ['/', '/login', '/signup']
+const hiddenOnPaths = ['/', '/login', '/signup', '/onboarding']
 
 export function NavHeader() {
   const pathname = usePathname()

@@ -10,18 +10,21 @@ declare module 'next-auth' {
       id: string
       email: string
       name: string
+      onboardingCompleted: boolean
     }
   }
   interface User {
     id: string
     email: string
     name: string
+    onboardingCompleted: boolean
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     id: string
+    onboardingCompleted: boolean
   }
 }
 
@@ -107,6 +110,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          onboardingCompleted: user.onboardingCompleted,
         }
       }
     })
@@ -156,12 +160,25 @@ export const authOptions: NextAuthOptions = {
      *
      * Use this to add custom data to the token.
      */
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // On initial sign in, user object is available
       // Add user.id to the token so we can access it later
       if (user) {
         token.id = user.id
+        token.onboardingCompleted = user.onboardingCompleted
       }
+
+      // Refresh onboardingCompleted on session update
+      if (trigger === 'update') {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { onboardingCompleted: true }
+        })
+        if (dbUser) {
+          token.onboardingCompleted = dbUser.onboardingCompleted
+        }
+      }
+
       return token
     },
 
@@ -174,9 +191,10 @@ export const authOptions: NextAuthOptions = {
      * Use this to expose token data to your app.
      */
     async session({ session, token }) {
-      // Add user ID from token to session
+      // Add user ID and onboarding status from token to session
       if (session.user) {
         session.user.id = token.id
+        session.user.onboardingCompleted = token.onboardingCompleted
       }
       return session
     },

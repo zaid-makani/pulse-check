@@ -20,12 +20,18 @@ import { NextResponse } from 'next/server'
 export default withAuth(
   function middleware(req) {
     // This runs only if user is authenticated
-    // You can add role-based access control here:
-    //
-    // const token = req.nextauth.token
-    // if (req.nextUrl.pathname.startsWith('/admin') && token?.role !== 'ADMIN') {
-    //   return NextResponse.redirect(new URL('/unauthorized', req.url))
-    // }
+    const token = req.nextauth.token
+    const pathname = req.nextUrl.pathname
+
+    // Check if user needs onboarding (not completed and not already on onboarding page)
+    if (
+      token &&
+      !token.onboardingCompleted &&
+      !pathname.startsWith('/onboarding') &&
+      !pathname.startsWith('/api/')
+    ) {
+      return NextResponse.redirect(new URL('/onboarding', req.url))
+    }
 
     return NextResponse.next()
   },
@@ -75,6 +81,7 @@ export const config = {
     '/chat/:path*',
     '/settings/:path*',
     '/teams/:path*',
+    '/onboarding/:path*',
     '/api/status/:path*',
     '/api/users/:path*',
     '/api/digest/:path*',
@@ -82,5 +89,6 @@ export const config = {
     '/api/views/:path*',
     '/api/transcribe/:path*',
     '/api/teams/:path*',
+    '/api/user/:path*',
   ]
 }
