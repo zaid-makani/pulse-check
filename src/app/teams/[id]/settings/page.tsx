@@ -16,6 +16,9 @@ import {
   Crown,
   Shield,
   User,
+  Bell,
+  Mail,
+  Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -52,6 +55,39 @@ const roleColors = {
   MEMBER: 'text-slate-600 bg-slate-50',
 }
 
+interface NotificationSettings {
+  reminderTime: string
+  reminderDays: number[]
+  digestEnabled: boolean
+  digestSchedule: 'daily' | 'weekly'
+  digestTime: string
+  timezone: string
+}
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: 'Sun' },
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+]
+
+const COMMON_TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Tokyo',
+  'Asia/Singapore',
+  'Asia/Kolkata',
+  'Australia/Sydney',
+]
+
 export default function TeamSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: teamId } = use(params)
   const router = useRouter()
@@ -76,9 +112,74 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
   const [addMemberError, setAddMemberError] = useState('')
   const [isLoadingUsers, setIsLoadingUsers] = useState(false)
 
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    reminderTime: '16:00',
+    reminderDays: [1, 2, 3, 4, 5],
+    digestEnabled: true,
+    digestSchedule: 'daily',
+    digestTime: '09:00',
+    timezone: 'UTC',
+  })
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
   useEffect(() => {
     fetchTeam()
+    fetchSettings()
   }, [teamId])
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch(`/api/teams/${teamId}/settings`)
+      if (response.ok) {
+        const data = await response.json()
+        setNotificationSettings({
+          reminderTime: data.reminderTime || '16:00',
+          reminderDays: JSON.parse(data.reminderDays || '[1,2,3,4,5]'),
+          digestEnabled: data.digestEnabled ?? true,
+          digestSchedule: data.digestSchedule || 'daily',
+          digestTime: data.digestTime || '09:00',
+          timezone: data.timezone || 'UTC',
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err)
+    } finally {
+      setIsLoadingSettings(false)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true)
+    setSettingsSaved(false)
+    try {
+      const response = await fetch(`/api/teams/${teamId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(notificationSettings),
+      })
+
+      if (response.ok) {
+        setSettingsSaved(true)
+        setTimeout(() => setSettingsSaved(false), 2000)
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err)
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const toggleReminderDay = (day: number) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      reminderDays: prev.reminderDays.includes(day)
+        ? prev.reminderDays.filter(d => d !== day)
+        : [...prev.reminderDays, day].sort((a, b) => a - b)
+    }))
+  }
 
   // Fetch available users when add member form is shown
   useEffect(() => {
@@ -455,6 +556,164 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
             </div>
           </CardContent>
         </Card>
+
+        {/* Notification Settings */}
+        {canManage && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notification Settings
+              </CardTitle>
+              <CardDescription>Configure reminders and digest emails for your team</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingSettings ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Reminder Settings */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-slate-500" />
+                      Update Reminders
+                    </h4>
+                    <p className="text-sm text-slate-500">
+                      Send reminders to team members who haven&apos;t submitted their daily update.
+                    </p>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium block mb-2">Reminder Time</label>
+                        <Input
+                          type="time"
+                          value={notificationSettings.reminderTime}
+                          onChange={(e) => setNotificationSettings(prev => ({
+                            ...prev,
+                            reminderTime: e.target.value
+                          }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium block mb-2">Timezone</label>
+                        <select
+                          value={notificationSettings.timezone}
+                          onChange={(e) => setNotificationSettings(prev => ({
+                            ...prev,
+                            timezone: e.target.value
+                          }))}
+                          className="w-full px-3 py-2 border rounded-md bg-white"
+                        >
+                          {COMMON_TIMEZONES.map(tz => (
+                            <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium block mb-2">Reminder Days</label>
+                      <div className="flex flex-wrap gap-2">
+                        {DAYS_OF_WEEK.map(day => (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => toggleReminderDay(day.value)}
+                            className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                              notificationSettings.reminderDays.includes(day.value)
+                                ? 'bg-violet-600 text-white border-violet-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-slate-200" />
+
+                  {/* Digest Settings */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-slate-500" />
+                          Team Digest
+                        </h4>
+                        <p className="text-sm text-slate-500">
+                          Send a summary of team updates to managers.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotificationSettings(prev => ({
+                          ...prev,
+                          digestEnabled: !prev.digestEnabled
+                        }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          notificationSettings.digestEnabled ? 'bg-violet-600' : 'bg-slate-200'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            notificationSettings.digestEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {notificationSettings.digestEnabled && (
+                      <div className="grid sm:grid-cols-2 gap-4 pl-6 border-l-2 border-slate-100">
+                        <div>
+                          <label className="text-sm font-medium block mb-2">Schedule</label>
+                          <select
+                            value={notificationSettings.digestSchedule}
+                            onChange={(e) => setNotificationSettings(prev => ({
+                              ...prev,
+                              digestSchedule: e.target.value as 'daily' | 'weekly'
+                            }))}
+                            className="w-full px-3 py-2 border rounded-md bg-white"
+                          >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly (Monday)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium block mb-2">Delivery Time</label>
+                          <Input
+                            type="time"
+                            value={notificationSettings.digestTime}
+                            onChange={(e) => setNotificationSettings(prev => ({
+                              ...prev,
+                              digestTime: e.target.value
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex items-center gap-3 pt-4">
+                    <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                      {isSavingSettings ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      Save Settings
+                    </Button>
+                    {settingsSaved && (
+                      <span className="text-sm text-green-600">Settings saved!</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
