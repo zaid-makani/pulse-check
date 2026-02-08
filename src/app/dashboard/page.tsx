@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { StatusCard } from '@/components/StatusCard'
 import { TeamPulseTable } from '@/components/TeamPulseTable'
 import { useTeam } from '@/components/TeamProvider'
-import { RefreshCw, Loader2, Users, AlertTriangle, TrendingUp } from 'lucide-react'
+import { RefreshCw, Loader2, Users, AlertTriangle, TrendingUp, Sparkles, Clock, Frown, AlertCircle, X } from 'lucide-react'
 
 interface StatusUpdate {
   id: string
@@ -53,6 +53,36 @@ interface TeamMember {
   }
 }
 
+interface Insight {
+  id: string
+  type: 'blocker' | 'missing_update' | 'sentiment' | 'risk'
+  severity: 'low' | 'medium' | 'high'
+  title: string
+  description: string
+  userId?: string
+  userName?: string
+  createdAt: string
+}
+
+const insightIcons = {
+  blocker: AlertTriangle,
+  missing_update: Clock,
+  sentiment: Frown,
+  risk: AlertCircle,
+}
+
+const insightColors = {
+  high: 'border-red-200 bg-red-50',
+  medium: 'border-orange-200 bg-orange-50',
+  low: 'border-yellow-200 bg-yellow-50',
+}
+
+const insightIconColors = {
+  high: 'text-red-600',
+  medium: 'text-orange-600',
+  low: 'text-yellow-600',
+}
+
 export default function DashboardPage() {
   const { currentTeam } = useTeam()
   const [updates, setUpdates] = useState<StatusUpdate[]>([])
@@ -61,6 +91,8 @@ export default function DashboardPage() {
   const [digest, setDigest] = useState<string>('')
   const [isLoadingDigest, setIsLoadingDigest] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(new Set())
 
   const fetchData = useCallback(async () => {
     if (!currentTeam) {
@@ -71,13 +103,15 @@ export default function DashboardPage() {
     setIsLoading(true)
     try {
       const teamParam = `teamId=${currentTeam.id}`
-      const [updatesRes, usersRes] = await Promise.all([
+      const [updatesRes, usersRes, insightsRes] = await Promise.all([
         fetch(`/api/status?days=7&${teamParam}`),
         fetch(`/api/users?${teamParam}`),
+        fetch(`/api/insights?${teamParam}`),
       ])
 
       const updatesData = await updatesRes.json()
       const usersData = await usersRes.json()
+      const insightsData = await insightsRes.json()
 
       // Handle error responses
       if (updatesData.error || usersData.error) {
@@ -85,7 +119,13 @@ export default function DashboardPage() {
         setUpdates([])
         setUsers([])
         setTeamMembers([])
+        setInsights([])
         return
+      }
+
+      // Set insights
+      if (insightsData.insights) {
+        setInsights(insightsData.insights)
       }
 
       setUpdates(updatesData)
@@ -208,6 +248,54 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Insights */}
+        {insights.filter(i => !dismissedInsights.has(i.id)).length > 0 && (
+          <Card className="mb-8 border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-violet-600" />
+                AI Insights
+              </CardTitle>
+              <CardDescription>
+                Proactive alerts about your team that may need attention
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {insights
+                  .filter(insight => !dismissedInsights.has(insight.id))
+                  .slice(0, 5)
+                  .map(insight => {
+                    const Icon = insightIcons[insight.type]
+                    return (
+                      <div
+                        key={insight.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${insightColors[insight.severity]}`}
+                      >
+                        <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${insightIconColors[insight.severity]}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-900">{insight.title}</p>
+                          <p className="text-sm text-slate-600">{insight.description}</p>
+                        </div>
+                        <button
+                          onClick={() => setDismissedInsights(prev => new Set([...prev, insight.id]))}
+                          className="shrink-0 p-1 text-slate-400 hover:text-slate-600 rounded"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )
+                  })}
+              </div>
+              {insights.filter(i => !dismissedInsights.has(i.id)).length > 5 && (
+                <p className="text-sm text-slate-500 mt-3 text-center">
+                  +{insights.filter(i => !dismissedInsights.has(i.id)).length - 5} more insights
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Main Content */}
         <Tabs defaultValue="pulse" className="space-y-4">
