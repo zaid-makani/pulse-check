@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Pencil, Trash2, Sparkles, Loader2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 
 interface Column {
   id: string
@@ -38,6 +38,9 @@ interface View {
   id: string
   name: string
   description: string | null
+  type: string
+  targetUserId: string | null
+  timeRange: string | null
   createdBy: {
     id: string
     name: string
@@ -68,6 +71,20 @@ export default function ViewDetailPage() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [showAddColumnDialog, setShowAddColumnDialog] = useState(false)
   const [showAISuggest, setShowAISuggest] = useState(false)
+  const [isPopulating, setIsPopulating] = useState(false)
+
+  const handlePopulate = async () => {
+    if (!view) return
+    setIsPopulating(true)
+    try {
+      await fetch(`/api/views/${viewId}/populate`, { method: 'POST' })
+      await fetchView()
+    } catch (error) {
+      console.error('Error populating view:', error)
+    } finally {
+      setIsPopulating(false)
+    }
+  }
 
   const fetchView = useCallback(async () => {
     try {
@@ -297,6 +314,16 @@ export default function ViewDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {view.type === 'one-on-one' && (
+              <Button variant="outline" size="sm" onClick={handlePopulate} disabled={isPopulating}>
+                {isPopulating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-1.5" />
+                )}
+                Refresh Data
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => setShowAISuggest(true)}>
               <Sparkles className="h-4 w-4 mr-1.5" />
               AI Suggest
@@ -324,6 +351,7 @@ export default function ViewDetailPage() {
           columns={view.columns}
           items={view.items}
           users={users}
+          viewName={view.name}
           onCellChange={handleCellChange}
           onAddRow={handleAddRow}
           onDeleteRow={(itemId) => setDeletingItemId(itemId)}

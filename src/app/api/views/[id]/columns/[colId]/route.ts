@@ -54,11 +54,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Column not found' }, { status: 404 })
     }
 
-    // Prevent deletion of system columns
-    if (existing.isSystem) {
-      return NextResponse.json({ error: 'Cannot delete system columns' }, { status: 400 })
-    }
-
     await prisma.viewColumn.delete({ where: { id: colId } })
 
     return NextResponse.json({ success: true, message: 'Column deleted' })

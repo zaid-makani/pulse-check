@@ -106,17 +106,20 @@ model TeamSettings {
 }
 
 model View {
-  id          String       @id @default(cuid())
-  name        String
-  description String?
-  createdById String
-  createdBy   User         @relation(fields: [createdById], references: [id])
-  teamId      String?
-  team        Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  columns     ViewColumn[]
-  items       WorkItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  name         String
+  description  String?
+  type         String       @default("custom")   // "one-on-one" | "sprint" | "custom"
+  createdById  String
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  teamId       String?
+  team         Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  targetUserId String?      // For 1-on-1: which person's updates to show
+  timeRange    String?      // "1w" | "2w" | "1m" | "3m"
+  columns      ViewColumn[]
+  items        WorkItem[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model ViewColumn {

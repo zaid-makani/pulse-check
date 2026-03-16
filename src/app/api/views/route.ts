@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { SYSTEM_COLUMNS } from '@/lib/view-columns'
+import { VIEW_TEMPLATES, ViewType } from '@/lib/view-columns'
 
 // GET /api/views - List views (filtered by team if teamId provided)
 export async function GET(request: NextRequest) {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, teamId } = body
+    const { name, description, teamId, type = 'custom', targetUserId, timeRange, columns: customColumns } = body
 
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
@@ -97,28 +97,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create view with system columns in a transaction
+    // Determine columns based on view type
+    const viewType = type as ViewType
+    const template = VIEW_TEMPLATES[viewType]
+    const columnsToCreate = customColumns && customColumns.length > 0
+      ? customColumns
+      : template?.columns || []
+
+    // Create view with template columns in a transaction
     const view = await prisma.$transaction(async (tx) => {
       const newView = await tx.view.create({
         data: {
           name,
           description,
+          type: viewType,
           createdById: session.user.id,
           teamId: teamId || null,
+          targetUserId: targetUserId || null,
+          timeRange: timeRange || null,
         },
       })
 
-      // Create system columns
-      await tx.viewColumn.createMany({
-        data: SYSTEM_COLUMNS.map((col) => ({
-          viewId: newView.id,
-          name: col.name,
-          type: col.type,
-          options: 'options' in col ? JSON.stringify(col.options) : '[]',
-          isSystem: true,
-          order: col.order,
-        })),
-      })
+      // Create columns from template or custom definition
+      if (columnsToCreate.length > 0) {
+        await tx.viewColumn.createMany({
+          data: columnsToCreate.map((col: { name: string; type: string; options?: string[]; order: number }) => ({
+            viewId: newView.id,
+            name: col.name,
+            type: col.type,
+            options: col.options ? JSON.stringify(col.options) : '[]',
+            isSystem: false,
+            order: col.order,
+          })),
+        })
+      }
 
       return newView
     })
