@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     let whereClause: {
       createdAt: { gte: Date }
       userId?: string
-      user?: { teamMemberships: { some: { teamId: string } } }
+      teamId?: string
     } = {
       createdAt: { gte: dateFilter },
     }
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       // Filter by specific user
       whereClause.userId = userId
     } else if (teamId) {
-      // Filter by team - only show updates from team members
+      // Filter by team - direct teamId filter
       // First verify the current user is a member of this team
       const membership = await prisma.teamMembership.findUnique({
         where: { userId_teamId: { userId: session.user.id, teamId } },
@@ -43,11 +43,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Not a member of this team' }, { status: 403 })
       }
 
-      whereClause.user = {
-        teamMemberships: {
-          some: { teamId },
-        },
-      }
+      whereClause.teamId = teamId
     }
 
     const updates = await prisma.statusUpdate.findMany({
@@ -92,10 +88,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { transcript } = body
+    const { transcript, teamId } = body
 
     if (!transcript) {
       return NextResponse.json({ error: 'transcript is required' }, { status: 400 })
+    }
+
+    if (!teamId) {
+      return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
+    }
+
+    // Verify user is a member of the team
+    const membership = await prisma.teamMembership.findUnique({
+      where: { userId_teamId: { userId: session.user.id, teamId } },
+    })
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Not a member of this team' }, { status: 403 })
     }
 
     // Extract structured data using AI
@@ -105,6 +114,7 @@ export async function POST(request: NextRequest) {
     const statusUpdate = await prisma.statusUpdate.create({
       data: {
         userId: session.user.id,
+        teamId,
         rawTranscript: transcript,
         completed: JSON.stringify(extracted.completed),
         inProgress: JSON.stringify(extracted.inProgress),

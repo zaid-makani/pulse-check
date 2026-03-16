@@ -29,6 +29,19 @@ export async function GET(request: NextRequest) {
       }
 
       whereClause = { teamId }
+    } else {
+      // No teamId: scope to views from user's teams + views they created
+      const userTeamIds = await prisma.teamMembership.findMany({
+        where: { userId: session.user.id },
+        select: { teamId: true },
+      })
+
+      whereClause = {
+        OR: [
+          { teamId: { in: userTeamIds.map(t => t.teamId) } },
+          { createdById: session.user.id },
+        ],
+      }
     }
 
     const views = await prisma.view.findMany({

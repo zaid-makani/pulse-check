@@ -129,6 +129,12 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="text-right">
+                <Link href="/forgot-password" className="text-sm text-violet-600 hover:text-violet-500">
+                  Forgot password?
+                </Link>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-600 hover:to-indigo-700"

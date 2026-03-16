@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     const recentUpdatesWithBlockers = await prisma.statusUpdate.findMany({
       where: {
+        ...(teamId ? { teamId } : {}),
         ...(userIds.length > 0 ? { userId: { in: userIds } } : {}),
         createdAt: { gte: sevenDaysAgo },
         NOT: { blockers: '[]' },
@@ -170,6 +171,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     const recentUpdatesWithSentiment = await prisma.statusUpdate.findMany({
       where: {
+        ...(teamId ? { teamId } : {}),
         ...(userIds.length > 0 ? { userId: { in: userIds } } : {}),
         createdAt: { gte: threeDaysAgo },
         sentiment: { not: null },
@@ -209,6 +211,7 @@ export async function GET(request: NextRequest) {
     // ============================================
     const updatesWithRisks = await prisma.statusUpdate.findMany({
       where: {
+        ...(teamId ? { teamId } : {}),
         ...(userIds.length > 0 ? { userId: { in: userIds } } : {}),
         createdAt: { gte: threeDaysAgo },
         NOT: { riskFlags: '[]' },

@@ -236,9 +236,21 @@ export interface ChatContext {
   updatesCount: number
 }
 
-export async function buildChatContext(days: number = 7, teamId?: string): Promise<ChatContext> {
+export async function buildChatContext(days: number = 7, teamId?: string, userId?: string): Promise<ChatContext> {
   const dateFilter = new Date()
   dateFilter.setDate(dateFilter.getDate() - days)
+
+  // Resolve team IDs for scoping
+  let teamIds: string[] = []
+  if (teamId) {
+    teamIds = [teamId]
+  } else if (userId) {
+    const memberships = await prisma.teamMembership.findMany({
+      where: { userId },
+      select: { teamId: true },
+    })
+    teamIds = memberships.map(m => m.teamId)
+  }
 
   // Build queries based on whether we have a team filter
   const usersQuery = teamId
@@ -256,6 +268,27 @@ export async function buildChatContext(days: number = 7, teamId?: string): Promi
         },
         orderBy: { user: { name: 'asc' } },
       }).then(memberships => memberships.map(m => m.user))
+    : teamIds.length > 0
+    ? prisma.teamMembership.findMany({
+        where: { teamId: { in: teamIds } },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+        orderBy: { user: { name: 'asc' } },
+      }).then(memberships => {
+        // Deduplicate users across teams
+        const seen = new Set<string>()
+        return memberships
+          .map(m => m.user)
+          .filter(u => { if (seen.has(u.id)) return false; seen.add(u.id); return true })
+      })
     : prisma.user.findMany({
         select: {
           id: true,
@@ -269,12 +302,8 @@ export async function buildChatContext(days: number = 7, teamId?: string): Promi
   const updatesQuery = prisma.statusUpdate.findMany({
     where: {
       createdAt: { gte: dateFilter },
-      ...(teamId && {
-        user: {
-          teamMemberships: {
-            some: { teamId },
-          },
-        },
+      ...(teamIds.length > 0 && {
+        teamId: teamIds.length === 1 ? teamIds[0] : { in: teamIds },
       }),
     },
     include: {

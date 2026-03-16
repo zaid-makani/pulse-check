@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build context with team data
-    const { systemPrompt } = await buildChatContext(days, teamId)
+    const { systemPrompt } = await buildChatContext(days, teamId, session.user.id)
 
     // Build messages array with history
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [

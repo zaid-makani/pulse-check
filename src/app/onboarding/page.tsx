@@ -47,19 +47,24 @@ export default function OnboardingPage() {
     }
   }, [status, router])
 
-  // Redirect if already onboarded
-  useEffect(() => {
-    if (session?.user?.onboardingCompleted) {
-      router.push('/dashboard')
-    }
-  }, [session, router])
+  const isReturningUser = !!session?.user?.onboardingCompleted
 
   // Fetch existing teams the user can join
   useEffect(() => {
-    // In a real app, you might have an invite system
-    // For now, we'll just let them create a team
-    setIsLoadingTeams(false)
-    setExistingTeams([])
+    async function fetchAvailableTeams() {
+      try {
+        const response = await fetch('/api/teams/available')
+        if (response.ok) {
+          const data = await response.json()
+          setExistingTeams(data)
+        }
+      } catch (err) {
+        console.error('Error fetching available teams:', err)
+      } finally {
+        setIsLoadingTeams(false)
+      }
+    }
+    fetchAvailableTeams()
   }, [])
 
   const handleCreateTeam = async () => {
@@ -87,7 +92,11 @@ export default function OnboardingPage() {
         return
       }
 
-      // Move to tips step
+      // Returning users go straight to dashboard; new users see tips
+      if (isReturningUser) {
+        router.push('/dashboard')
+        return
+      }
       setStep('tips')
     } catch {
       setError('An error occurred')
@@ -111,6 +120,11 @@ export default function OnboardingPage() {
         return
       }
 
+      // Returning users go straight to dashboard; new users see tips
+      if (isReturningUser) {
+        router.push('/dashboard')
+        return
+      }
       setStep('tips')
     } catch {
       setError('An error occurred')
@@ -138,10 +152,6 @@ export default function OnboardingPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleSkipToTips = () => {
-    setStep('tips')
   }
 
   if (status === 'loading') {
@@ -210,32 +220,21 @@ export default function OnboardingPage() {
                     </div>
                   </Button>
 
-                  {existingTeams.length > 0 && (
-                    <Button
-                      variant="outline"
-                      className="w-full h-auto py-4 flex items-start gap-4"
-                      onClick={() => setMode('join')}
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
-                        <Users className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium">Join an existing team</p>
-                        <p className="text-sm text-muted-foreground">
-                          Connect with teams already using PulseCheck
-                        </p>
-                      </div>
-                    </Button>
-                  )}
-
-                  <div className="pt-4 text-center">
-                    <button
-                      className="text-sm text-slate-500 hover:text-slate-700"
-                      onClick={handleSkipToTips}
-                    >
-                      Skip for now
-                    </button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 flex items-start gap-4"
+                    onClick={() => setMode('join')}
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+                      <Users className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">Join an existing team</p>
+                      <p className="text-sm text-muted-foreground">
+                        Connect with teams already using PulseCheck
+                      </p>
+                    </div>
+                  </Button>
                 </div>
               )}
 

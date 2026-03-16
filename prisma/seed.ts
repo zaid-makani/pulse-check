@@ -116,6 +116,30 @@ async function main() {
   }
 
   console.log(`Created ${statusUpdates.length} status updates`)
+
+  // Backfill: set teamId on any StatusUpdate where it's null
+  const orphanedUpdates = await prisma.statusUpdate.findMany({
+    where: { teamId: null },
+    select: { id: true, userId: true },
+  })
+
+  if (orphanedUpdates.length > 0) {
+    console.log(`Backfilling teamId for ${orphanedUpdates.length} status updates...`)
+    for (const update of orphanedUpdates) {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { userId: update.userId },
+        select: { teamId: true },
+      })
+      if (membership) {
+        await prisma.statusUpdate.update({
+          where: { id: update.id },
+          data: { teamId: membership.teamId },
+        })
+      }
+    }
+    console.log('Backfill complete!')
+  }
+
   console.log('Seeding complete!')
 }
 

@@ -30,6 +30,8 @@ model StatusUpdate {
   id             String   @id @default(cuid())
   userId         String
   user           User     @relation(fields: [userId], references: [id])
+  teamId         String?
+  team           Team?    @relation(fields: [teamId], references: [id])
 
   // Raw input
   rawTranscript  String
@@ -63,9 +65,10 @@ model Team {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  memberships TeamMembership[]
-  settings    TeamSettings?
-  views       View[]
+  memberships    TeamMembership[]
+  settings       TeamSettings?
+  views          View[]
+  statusUpdates  StatusUpdate[]
 }
 
 model TeamMembership {
@@ -136,6 +139,17 @@ model WorkItem {
   order     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Password reset tokens
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }
 
 // Slack workspace installation

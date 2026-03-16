@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { VoiceRecorder } from '@/components/VoiceRecorder'
+import { useTeam } from '@/components/TeamProvider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, Send, Check, AlertCircle, History } from 'lucide-react'
+import { Loader2, Send, Check, AlertCircle, History, Users } from 'lucide-react'
 
 interface SubmittedUpdate {
   summary: string
@@ -18,6 +19,7 @@ interface SubmittedUpdate {
 
 export default function SubmitPage() {
   const { data: session } = useSession()
+  const { currentTeam } = useTeam()
   const [transcript, setTranscript] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -44,6 +46,7 @@ export default function SubmitPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcript: transcript.trim(),
+          teamId: currentTeam?.id,
         }),
       })
 
@@ -72,6 +75,34 @@ export default function SubmitPage() {
     setTranscript('')
     setSubmitted(false)
     setSubmittedUpdate(null)
+  }
+
+  if (!currentTeam) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-8">
+        <div className="container mx-auto max-w-2xl px-4">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">Submit Update</h1>
+            <p className="text-muted-foreground">Share your status with the team</p>
+          </div>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">Join or create a team to submit updates</h2>
+              <p className="text-sm text-slate-500 mb-6">You need to be part of a team before you can submit status updates.</p>
+              <div className="flex justify-center gap-3">
+                <Link href="/teams/join">
+                  <Button variant="outline">Join a Team</Button>
+                </Link>
+                <Link href="/teams/new">
+                  <Button>Create a Team</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -154,6 +185,12 @@ export default function SubmitPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Team indicator */}
+              <div className="flex items-center gap-3 p-3 bg-violet-50 border border-violet-100 rounded-lg">
+                <Users className="h-4 w-4 text-violet-600" />
+                <p className="text-sm font-medium text-violet-700">Posting to: {currentTeam.name}</p>
+              </div>
+
               {/* Submitting as indicator */}
               {session?.user && (
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">

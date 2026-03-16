@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { sendReminderEmail } from '@/lib/email'
 
 /**
  * POST /api/cron/reminders
@@ -20,6 +19,9 @@ export async function POST(request: NextRequest) {
     if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Check if cron emails are enabled
+    const cronEmailsEnabled = process.env.ENABLE_CRON_EMAILS === 'true'
 
     const { searchParams } = new URL(request.url)
     const specificTeamId = searchParams.get('teamId')
@@ -103,16 +105,23 @@ export async function POST(request: NextRequest) {
           continue // Already submitted today
         }
 
-        try {
-          await sendReminderEmail({
-            to: membership.user.email,
-            userName: membership.user.name,
-            teamName: settings.team.name,
-          })
+        if (cronEmailsEnabled && process.env.RESEND_API_KEY) {
+          try {
+            const { sendReminderEmail } = await import('@/lib/email')
+            await sendReminderEmail({
+              to: membership.user.email,
+              userName: membership.user.name,
+              teamName: settings.team.name,
+            })
+            sent++
+            emailsSent++
+          } catch (error) {
+            console.error(`Failed to send reminder to ${membership.user.email}:`, error)
+          }
+        } else {
+          console.log(`[CRON-DRY-RUN] Reminder: would email ${membership.user.name} (${membership.user.email}) for ${settings.team.name}`)
           sent++
           emailsSent++
-        } catch (error) {
-          console.error(`Failed to send reminder to ${membership.user.email}:`, error)
         }
       }
 

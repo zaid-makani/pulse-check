@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Build where clause
     let whereClause: {
       createdAt: { gte: Date }
-      user?: { teamMemberships: { some: { teamId: string } } }
+      teamId?: string
     } = {
       createdAt: { gte: dateFilter },
     }
@@ -37,11 +37,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Not a member of this team' }, { status: 403 })
       }
 
-      whereClause.user = {
-        teamMemberships: {
-          some: { teamId },
-        },
-      }
+      whereClause.teamId = teamId
     }
 
     const updates = await prisma.statusUpdate.findMany({

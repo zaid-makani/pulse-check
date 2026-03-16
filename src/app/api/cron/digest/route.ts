@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { sendDigestEmail } from '@/lib/email'
-import { postDigestToSlack } from '@/lib/slack'
 
 /**
  * POST /api/cron/digest
@@ -21,6 +19,9 @@ export async function POST(request: NextRequest) {
     if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Check if cron emails are enabled
+    const cronEmailsEnabled = process.env.ENABLE_CRON_EMAILS === 'true'
 
     const { searchParams } = new URL(request.url)
     const specificTeamId = searchParams.get('teamId')
@@ -85,11 +86,9 @@ export async function POST(request: NextRequest) {
         : { gte: yesterdayStart, lte: yesterdayEnd }
 
       // Get all status updates for the period
-      const memberIds = settings.team.memberships.map(m => m.user.id)
-
       const updates = await prisma.statusUpdate.findMany({
         where: {
-          userId: { in: memberIds },
+          teamId: settings.teamId,
           createdAt: dateRange,
         },
         include: {
@@ -152,26 +151,33 @@ export async function POST(request: NextRequest) {
         m => m.role === 'MANAGER' || m.role === 'LEAD'
       )
 
-      for (const manager of managers) {
-        try {
-          await sendDigestEmail({
-            to: manager.user.email,
-            managerName: manager.user.name,
-            teamName: settings.team.name,
-            summary,
-            stats,
-            memberUpdates,
-          })
-          emailsSent++
-        } catch (error) {
-          console.error(`Failed to send digest to ${manager.user.email}:`, error)
+      // Send digest emails to managers/leads
+      if (cronEmailsEnabled && process.env.RESEND_API_KEY) {
+        const { sendDigestEmail } = await import('@/lib/email')
+        for (const manager of managers) {
+          try {
+            await sendDigestEmail({
+              to: manager.user.email,
+              managerName: manager.user.name,
+              teamName: settings.team.name,
+              summary,
+              stats,
+              memberUpdates,
+            })
+            emailsSent++
+          } catch (error) {
+            console.error(`Failed to send digest to ${manager.user.email}:`, error)
+          }
         }
+      } else {
+        console.log(`[CRON-DRY-RUN] Digest for ${settings.team.name}: would email ${managers.length} managers (${managers.map(m => m.user.email).join(', ')})`)
       }
 
       // Post to Slack if configured
       let slackSent = false
       if (settings.slackWebhookUrl) {
         try {
+          const { postDigestToSlack } = await import('@/lib/slack')
           await postDigestToSlack({
             webhookUrl: settings.slackWebhookUrl,
             teamName: settings.team.name,

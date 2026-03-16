@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { ChatMessage } from '@/components/chat/ChatMessage'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { useTeam } from '@/components/TeamProvider'
-import { MessageCircle, Sparkles } from 'lucide-react'
+import { MessageCircle, Sparkles, ChevronDown } from 'lucide-react'
+
+type ChatScope = 'current' | 'all'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -21,10 +23,13 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 export default function ChatPage() {
-  const { currentTeam } = useTeam()
+  const { currentTeam, teams } = useTeam()
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const [chatScope, setChatScope] = useState<ChatScope>('current')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const effectiveTeamId = chatScope === 'all' ? undefined : currentTeam?.id
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -34,13 +39,13 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Reset messages when team changes
+  // Reset messages when team or scope changes
   useEffect(() => {
     setMessages([])
-  }, [currentTeam?.id])
+  }, [currentTeam?.id, chatScope])
 
   const sendMessage = async (content: string) => {
-    if (!currentTeam) return
+    if (chatScope === 'current' && !currentTeam) return
 
     const userMessage: Message = { role: 'user', content }
     setMessages((prev) => [...prev, userMessage])
@@ -57,7 +62,7 @@ export default function ChatPage() {
           message: content,
           history: messages,
           days: 7,
-          teamId: currentTeam.id,
+          ...(effectiveTeamId ? { teamId: effectiveTeamId } : {}),
         }),
       })
 
@@ -115,18 +120,38 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="container mx-auto max-w-4xl h-screen flex flex-col p-4">
         {/* Header */}
-        <div className="flex items-center gap-3 py-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
-            <MessageCircle className="h-5 w-5 text-white" />
+        <div className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
+              <MessageCircle className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                {chatScope === 'all'
+                  ? 'All Teams Chat'
+                  : currentTeam ? `${currentTeam.name} Chat` : 'Team Chat'}
+              </h1>
+              <p className="text-sm text-slate-500">
+                {chatScope === 'all'
+                  ? 'Ask questions across all your teams'
+                  : currentTeam ? 'Ask questions about your team\'s status' : 'Select a team to start chatting'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              {currentTeam ? `${currentTeam.name} Chat` : 'Team Chat'}
-            </h1>
-            <p className="text-sm text-slate-500">
-              {currentTeam ? 'Ask questions about your team\'s status' : 'Select a team to start chatting'}
-            </p>
-          </div>
+          {/* Scope selector */}
+          {teams.length > 0 && (
+            <div className="relative">
+              <select
+                value={chatScope}
+                onChange={(e) => setChatScope(e.target.value as ChatScope)}
+                className="appearance-none bg-white border border-slate-200 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium text-slate-700 hover:border-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 cursor-pointer"
+              >
+                <option value="current">Current team</option>
+                <option value="all">All my teams</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            </div>
+          )}
         </div>
 
         {/* Chat Area */}
@@ -173,7 +198,7 @@ export default function ChatPage() {
           )}
 
           {/* Input */}
-          <ChatInput onSend={sendMessage} disabled={isStreaming || !currentTeam} />
+          <ChatInput onSend={sendMessage} disabled={isStreaming || (chatScope === 'current' && !currentTeam)} />
         </Card>
       </div>
     </div>

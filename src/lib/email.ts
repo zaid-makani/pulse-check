@@ -1,11 +1,80 @@
 import { Resend } from 'resend'
 
-// Initialize Resend client
-// Set RESEND_API_KEY in your environment variables
-export const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-initialize Resend client to avoid crashing at import if key is missing
+let _resend: Resend | null = null
+
+function getResend(): Resend {
+  if (!_resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY environment variable is not set. Get one at https://resend.com')
+    }
+    _resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return _resend
+}
 
 // Default from address - update to your verified domain
 export const FROM_EMAIL = process.env.FROM_EMAIL || 'PulseCheck <notifications@pulsecheck.dev>'
+
+/**
+ * Send a password reset email
+ */
+export async function sendPasswordResetEmail({
+  to,
+  userName,
+  resetUrl,
+}: {
+  to: string
+  userName: string
+  resetUrl: string
+}) {
+  const subject = 'Reset your PulseCheck password'
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">PulseCheck</h1>
+  </div>
+
+  <div style="background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${userName},</p>
+
+    <p style="margin-bottom: 20px;">
+      We received a request to reset your password. Click the button below to choose a new password.
+    </p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${resetUrl}"
+         style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+        Reset Password
+      </a>
+    </div>
+
+    <p style="color: #64748b; font-size: 14px; margin-top: 30px;">
+      This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+    </p>
+  </div>
+
+  <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">
+    <p>Sent by PulseCheck</p>
+  </div>
+</body>
+</html>
+  `
+
+  return getResend().emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  })
+}
 
 /**
  * Send an update reminder email to a team member
@@ -63,7 +132,7 @@ export async function sendReminderEmail({
 </html>
   `
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject,
@@ -171,7 +240,7 @@ export async function sendDigestEmail({
 </html>
   `
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject,
