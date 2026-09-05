@@ -150,7 +150,7 @@ const SummarySchema = z.object({
   participants: z.array(z.string()).describe('Names of the people who have contributed updates to this thread'),
 })
 
-const SUMMARY_SYSTEM = `You keep a running summary of one work thread for a team. You are given the thread name, its previous summary, and its most recent updates in order (oldest first). Write the new summary so that a director who has not been following can understand where things stand in ten seconds. Status is blocked only when the most recent updates state an explicit blocker for this thread (waiting on a person, team, vendor, or system). A risk, a worry, or a frustrated tone is not a blocker. Done only when the work has shipped or been closed out.`
+const SUMMARY_SYSTEM = `You keep a running summary of one work thread for a team. You are given the thread name, its previous summary, and its most recent updates in order (oldest first). Updates often mention other work too; when an update carries an [about this thread: ...] note, only the part it points at concerns this thread. Write the new summary so that a director who has not been following can understand where things stand in ten seconds. Status is blocked only when the most recent updates state an explicit blocker for this thread (waiting on a person, team, vendor, or system). A risk, a worry, or a frustrated tone is not a blocker. Done only when the work has shipped or been closed out.`
 
 export async function refreshThread(threadId: string, ctx: { teamId?: string | null; userId?: string | null } = {}) {
   const thread = await prisma.thread.findUnique({
@@ -168,7 +168,8 @@ export async function refreshThread(threadId: string, ctx: { teamId?: string | n
   const updates = [...thread.links].reverse().map((l) => {
     const s = readSignals(l.update.signals)
     const date = l.update.createdAt.toISOString().slice(0, 10)
-    return `${date} · ${l.update.user.name}: ${s.summary || l.update.rawText.slice(0, 200)}${s.blockers.length ? ` | blocked: ${s.blockers.map((b) => b.text).join('; ')}` : ''}${s.done.length ? ` | done: ${s.done.join('; ')}` : ''}`
+    const focus = l.excerpt ? ` [about this thread: ${l.excerpt}]` : ''
+    return `${date} · ${l.update.user.name}: ${s.summary || l.update.rawText.slice(0, 200)}${focus}${s.blockers.length ? ` | blocked: ${s.blockers.map((b) => b.text).join('; ')}` : ''}${s.done.length ? ` | done: ${s.done.join('; ')}` : ''}`
   })
 
   const prompt = `Thread: ${thread.name}\nPrevious summary: ${thread.summary ?? '(none)'}\nKnown aliases: ${thread.aliases.join(', ') || '(none)'}\n\nRecent updates:\n${updates.join('\n')}`
