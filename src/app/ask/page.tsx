@@ -21,17 +21,17 @@ interface Turn {
 
 const managerStarters = [
   'What needs my attention today?',
-  'Who is working on the N1 integration and where is it?',
+  'Who is blocked, and on whom?',
   'Who has been quiet this week, and what were they last on?',
-  'Is anything at risk for this quarter?',
-  'Who is blocked on another team?',
+  'What is waiting on another team or a vendor?',
+  'What got finished in the last two weeks?',
 ]
 const memberStarters = [
-  'What is the latest on the N1 integration?',
   'What did I say I was working on last week?',
-  'Is anyone else touching bulk upload?',
   'What is blocked on the team right now?',
-  'What shipped in the last two weeks?',
+  'Who else is working on the same things as me?',
+  'What got finished in the last two weeks?',
+  'What is the latest on the thread I touched most recently?',
 ]
 
 export default function AskPage() {

@@ -41,23 +41,27 @@ export default function HomePage() {
   const { currentTeam, me, managesCurrent, isLoading: teamLoading } = useTeam()
   const [updates, setUpdates] = useState<UpdateView[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const [now] = useState(() => Date.now())
+  const loading = !!currentTeam && loadedFor !== currentTeam.id
 
   useEffect(() => {
-    if (!currentTeam) { setLoading(false); return }
+    if (!currentTeam) return
     let cancelled = false
-    setLoading(true)
     Promise.all([
       fetch(`/api/updates?teamId=${currentTeam.id}&days=14`).then((r) => r.json()),
       fetch(`/api/users?teamId=${currentTeam.id}`).then((r) => r.json()),
-    ])
-      .then(([u, m]) => { if (!cancelled) { setUpdates(Array.isArray(u) ? u : []); setMembers(Array.isArray(m) ? m : []) } })
-      .finally(() => { if (!cancelled) setLoading(false) })
+    ]).then(([u, m]) => {
+      if (cancelled) return
+      setUpdates(Array.isArray(u) ? u : [])
+      setMembers(Array.isArray(m) ? m : [])
+      setLoadedFor(currentTeam.id)
+    })
     return () => { cancelled = true }
   }, [currentTeam])
 
   const feed = useMemo(() => {
-    const cutoff = Date.now() - FEED_DAYS * 86_400_000
+    const cutoff = now - FEED_DAYS * 86_400_000
     const g = new Map<string, UpdateView[]>()
     for (const u of updates) {
       if (new Date(u.createdAt).getTime() < cutoff) continue
@@ -66,7 +70,7 @@ export default function HomePage() {
       g.get(k)!.push(u)
     }
     return [...g.entries()]
-  }, [updates])
+  }, [updates, now])
 
   const today = format(new Date(), 'EEEE, d MMMM')
 
@@ -258,7 +262,8 @@ function MemberToday({ teamId, teamName, meId, updates, members, feed }: { teamI
   }, [teamId])
 
   const mine = updates.filter((u) => u.userId === meId)
-  const postedToday = mine.some((u) => u.createdAt.slice(0, 10) === new Date().toISOString().slice(0, 10))
+  const [todayKey] = useState(() => new Date().toISOString().slice(0, 10))
+  const postedToday = mine.some((u) => u.createdAt.slice(0, 10) === todayKey)
   const last = mine[0]
 
   return (

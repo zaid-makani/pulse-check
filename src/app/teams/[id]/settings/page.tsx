@@ -57,6 +57,7 @@ export default function TeamSettingsPage({ params }: { params: Promise<{ id: str
     setSettings({ ...s, nudgeDays: s.nudgeDays ?? [1, 2, 3, 4, 5], slackWebhookUrl: s.slackWebhookUrl ?? '' })
   }, [id])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets state only after awaiting fetch
   useEffect(() => { load() }, [load])
 
   const canManage = team?.currentUserRole === 'LEAD' || team?.currentUserRole === 'MANAGER'

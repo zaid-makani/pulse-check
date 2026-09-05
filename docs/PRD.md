@@ -57,7 +57,23 @@ A thread that leadership has marked as a quarter deliverable. Carries the quarte
 A generated document. Types at pilot: daily briefing (per team, for leads/managers), standup brief (per team, before the DSM), 1-on-1 prep (per person, per period), self-review (per person, per period), quarter delivery draft (per team, per quarter). Reports are regenerable, editable, and exportable to Slack (message or canvas) and Markdown.
 
 ### Team and organization
-Teams isolate data by default. Organizations group teams so that directors and above can query across them. Roles: member, lead, manager at team level; admin at org level.
+Teams isolate data by default. Organizations group teams so that people with an org-wide role can see across them.
+
+**Who sees what** is decided by two things only, and both are already in the model:
+
+| Role | Where it lives | What it grants |
+|---|---|---|
+| Member | Team membership | Capture to that team, see that team's feed and threads, ask about that team, own record and self-review |
+| Lead / Manager | Team membership | Everything a member has, plus the briefing, flags, roster tone, 1-on-1 prep for people on that team, team settings, AI spend |
+| Org admin | Org membership | Read access to every team in the org, Overview across all of them, ask across all of them, 1-on-1 prep for anyone in the org |
+
+So a director who runs four teams is a manager on four teams. A senior manager under them who should see two of those is a manager on those two. Two peer directors have disjoint team lists. A VP or CTO is an org admin and sees all of it, including teams created after they were granted the role. There is no separate "director" object to maintain; scope is the sum of memberships. Multiple managers on one team is fine.
+
+**Ask** defaults to every team the asker can see and can be narrowed to the current team. For a member that is their teams; for a director it is their four; for the CTO it is the org.
+
+**Overview** (`/overview`) is the cross-team page for anyone who can see more than one team: one card per team with a health signal, blocked threads, people sounding fed up or gone quiet, and the "talk to first" line from that team's latest briefing. It is the seed of Lifeline.
+
+**Non-engineering teams.** Every team has a vocabulary (engineering, sales, marketing, general) that shapes extraction. Threads, reports, ask, and the Slack flow are vocabulary-neutral: a sales team's threads are deals and renewals, its blockers are clients and legal. What has not been tuned yet is the wording of the report templates, which still leans engineering ("shipped", "delivery"). That is a prompt change per vocabulary, not a structural one.
 
 ## 6. Features for the pilot
 

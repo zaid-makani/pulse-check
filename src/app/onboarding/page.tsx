@@ -59,7 +59,7 @@ export default function OnboardingPage() {
       <AuthShell title="Three things to know" wide>
         <ul className="space-y-4">
           <Tip icon={Mic} title="Say what you did, however is easiest" body="A voice note here, a reply to the nightly Slack nudge, or a line of text. Thirty seconds. PulseCheck pulls out what got done, what is in progress, and what is stuck." />
-          <Tip icon={MessageCircle} title="Ask instead of chasing" body="Who is on the N1 integration? What is blocked? What did I say I would do last week? Answers come from people's own updates, with sources." />
+          <Tip icon={MessageCircle} title="Ask instead of chasing" body="Who is working on what? What is blocked, and on whom? What did I say I would do last week? Answers come from people's own updates, with sources." />
           <Tip icon={User} title="Your record is yours" body="Every update builds a timeline only you and your lead see in full. At review time, PulseCheck drafts your self-review from it." />
         </ul>
         <Button className="mt-6 w-full" onClick={finish} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Take me in'}</Button>

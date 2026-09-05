@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { Mic, Sun, User, MessageCircle, GitBranch, LogOut, Coins, Settings, FileText } from 'lucide-react'
+import { Mic, Sun, User, MessageCircle, GitBranch, LogOut, Coins, Settings, FileText, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTeam } from '@/components/TeamProvider'
 
@@ -35,9 +35,11 @@ function PulseMark() {
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { currentTeam, me, managesCurrent } = useTeam()
+  const { currentTeam, me, managesCurrent, teams } = useTeam()
+  const seesManyTeams = !!me && (me.orgAdmin || me.managesTeamIds.length > 1 || teams.length > 1)
 
   const secondary = [
+    ...(seesManyTeams ? [{ href: '/overview', label: 'Overview', icon: LayoutGrid }] : []),
     ...(currentTeam ? [{ href: `/teams/${currentTeam.id}/settings`, label: managesCurrent ? 'Team settings' : 'Team', icon: Settings }] : []),
     ...(me?.isManager ? [{ href: '/admin/costs', label: 'AI spend', icon: Coins }] : []),
   ]

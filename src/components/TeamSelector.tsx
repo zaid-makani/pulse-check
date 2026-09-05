@@ -42,7 +42,7 @@ export function TeamSelector() {
                 <span className="flex-1">
                   <span className="block text-[13.5px] font-medium">{t.name}</span>
                   <span className="block text-[11.5px] text-ink-faint">
-                    {t.memberCount} member{t.memberCount !== 1 ? 's' : ''} · {t.role.toLowerCase()}
+                    {t.memberCount} member{t.memberCount !== 1 ? 's' : ''} · {t.role === 'ADMIN' ? 'org view' : t.role.toLowerCase()}
                   </span>
                 </span>
                 {currentTeam?.id === t.id && <Check className="h-4 w-4 text-pulse" />}

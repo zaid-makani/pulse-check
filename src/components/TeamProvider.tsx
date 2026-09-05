@@ -7,7 +7,7 @@ export interface Team {
   id: string
   name: string
   description: string | null
-  role: 'MEMBER' | 'LEAD' | 'MANAGER'
+  role: 'MEMBER' | 'LEAD' | 'MANAGER' | 'ADMIN'
   memberCount: number
   createdAt: string
 }

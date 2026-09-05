@@ -30,16 +30,19 @@ export default function ThreadsPage() {
   const { currentTeam, teams } = useTeam()
   const [scope, setScope] = useState<'team' | 'all'>('team')
   const [rows, setRows] = useState<ThreadRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const key = scope === 'team' ? `team:${currentTeam?.id ?? ''}` : 'all'
+  const loading = loadedFor !== key
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'open' | 'all' | 'blocked' | 'done'>('open')
 
   useEffect(() => {
     if (scope === 'team' && !currentTeam) return
-    setLoading(true)
     const url = scope === 'team' ? `/api/threads?teamId=${currentTeam!.id}` : '/api/threads'
-    fetch(url).then((r) => r.json()).then((d) => setRows(Array.isArray(d) ? d : [])).finally(() => setLoading(false))
-  }, [currentTeam, scope])
+    let cancelled = false
+    fetch(url).then((r) => r.json()).then((d) => { if (!cancelled) { setRows(Array.isArray(d) ? d : []); setLoadedFor(key) } })
+    return () => { cancelled = true }
+  }, [currentTeam, scope, key])
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase()

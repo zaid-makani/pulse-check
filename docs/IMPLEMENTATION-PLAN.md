@@ -52,7 +52,8 @@ What is kept: `User`, `Team`, `TeamMembership`, `TeamSettings`, `SlackInstallati
 | 2 Slack | Built, untested | Needs a workspace: see `slack/README.md`. Socket Mode for local dev |
 | 3 Ask | Done | Agent with tools, streaming web chat, Slack @mention and `/pulse ask` |
 | 4 Reports | Done | Six templates, cron tick for briefings and recaps |
-| 5 Pilot readiness | Partial | Dockerfile done. Org deploy config, pilot instrumentation, journey test pending |
+| 5 Pilot readiness | Partial | Dockerfile done and smoke-tested. Org deploy config, pilot instrumentation, journey test pending |
+| Product review | Done | `docs/PRODUCT-REVIEW-2026-09-05.md`; role-split Today, report reuse, entry screens, Overview page, org admin management |
 
 Everything is on the `v2` branch. Merge to `master` before cloning onto the office laptop.
 

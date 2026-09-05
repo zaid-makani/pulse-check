@@ -43,7 +43,7 @@ export default async function Landing() {
 
         <section className="grid gap-6 border-t border-line py-16 md:grid-cols-3">
           <Feature icon={Mic} title="Capture in thirty seconds" body="Talk like you would in standup. A voice note here, a reply to the nightly Slack nudge, or a line of text. Nothing to fill in." />
-          <Feature icon={MessageCircle} title="Ask, don't chase" body="Who is on the N1 integration? What is blocked on another team? What has Priya been doing? Answers come from people's own words, with sources." />
+          <Feature icon={MessageCircle} title="Ask, don't chase" body="Who is working on the vendor integration? What is blocked on another team? What has Priya been doing? Answers come from people's own words, with sources." />
           <Feature icon={FileText} title="Documents that write themselves" body="A morning briefing for leads. 1-on-1 prep for managers. A self-review draft for every person. Quarter delivery notes for the CTO." />
         </section>
 
