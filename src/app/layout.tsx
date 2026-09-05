@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { NavHeader } from '@/components/NavHeader'
+import { AppShell } from '@/components/AppShell'
 import { AuthProvider } from '@/components/AuthProvider'
 import { TeamProvider } from '@/components/TeamProvider'
 import './globals.css'
@@ -30,8 +30,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
           <TeamProvider>
-            <NavHeader />
-            {children}
+            <AppShell>
+              {children}
+            </AppShell>
           </TeamProvider>
         </AuthProvider>
       </body>
