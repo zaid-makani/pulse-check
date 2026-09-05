@@ -8,6 +8,7 @@ import { TopBar } from '@/components/TopBar'
 import { UpdateCard } from '@/components/UpdateCard'
 import { Panel, Empty } from '@/components/ui/primitives'
 import { Button } from '@/components/ui/button'
+import { ReportButton } from '@/components/ReportButton'
 import { dayLabel } from '@/lib/format'
 import type { UpdateView } from '@/lib/updates'
 
@@ -66,9 +67,17 @@ export default function MePage() {
     <>
       <TopBar title="Me" />
       <main className="mx-auto max-w-3xl px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-serif text-[28px] font-medium tracking-tight">{session?.user?.name}</h1>
-          <p className="text-[14px] text-ink-soft">Everything you have told PulseCheck, across all your teams. This becomes your self-review.</p>
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-[28px] font-medium tracking-tight">{session?.user?.name}</h1>
+            <p className="text-[14px] text-ink-soft">Everything you have told PulseCheck, across all your teams. This becomes your self-review.</p>
+          </div>
+          {me && (
+            <div className="flex flex-wrap items-center gap-2">
+              <ReportButton type="WEEK_RECAP" label="My week" subjectUserId={me} />
+              <ReportButton type="SELF_REVIEW" label="Self-review" subjectUserId={me} withPeriod defaultDays={182} variant="default" />
+            </div>
+          )}
         </div>
 
         {loading ? (

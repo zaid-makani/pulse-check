@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { Loader2, Mic } from 'lucide-react'
+import { Loader2, Mic, RefreshCw, Sparkles } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { TopBar } from '@/components/TopBar'
 import { UpdateCard } from '@/components/UpdateCard'
 import { useTeam } from '@/components/TeamProvider'
 import { Panel, PanelHeader, Empty, Avatar, SentimentDot, Pill } from '@/components/ui/primitives'
 import { Button } from '@/components/ui/button'
+import { ReportButton } from '@/components/ReportButton'
 import { dayLabel, daysSince, relativeTime } from '@/lib/format'
 import type { UpdateView } from '@/lib/updates'
 import type { Sentiment } from '@prisma/client'
@@ -34,6 +36,28 @@ export default function HomePage() {
   const [updates, setUpdates] = useState<UpdateView[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [briefing, setBriefing] = useState<{ id: string; title: string; content: string; createdAt: string } | null>(null)
+  const [briefingLoading, setBriefingLoading] = useState(false)
+
+  useEffect(() => {
+    if (!currentTeam) { setBriefing(null); return }
+    fetch(`/api/reports?type=DAILY_BRIEFING&teamId=${currentTeam.id}&limit=1`)
+      .then((r) => r.json())
+      .then(async (rows) => {
+        if (!Array.isArray(rows) || rows.length === 0) { setBriefing(null); return }
+        const full = await fetch(`/api/reports/${rows[0].id}`).then((r) => r.json())
+        setBriefing(full.error ? null : full)
+      })
+  }, [currentTeam])
+
+  async function regenerateBriefing() {
+    if (!currentTeam) return
+    setBriefingLoading(true)
+    const res = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'DAILY_BRIEFING', teamId: currentTeam.id }) })
+    const d = await res.json()
+    if (res.ok) setBriefing(d)
+    setBriefingLoading(false)
+  }
 
   useEffect(() => {
     if (!currentTeam) { setLoading(false); return }
@@ -96,6 +120,34 @@ export default function HomePage() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             <div className="space-y-6">
+              <Panel className="border-pulse/20">
+                <PanelHeader
+                  title={<span className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-pulse" /> Briefing</span>}
+                  aside={
+                    briefing ? (
+                      <span className="flex items-center gap-2 text-[12px] text-ink-faint">
+                        {relativeTime(briefing.createdAt)}
+                        <button onClick={regenerateBriefing} disabled={briefingLoading} className="rounded p-1 hover:bg-paper-2 hover:text-ink" title="Regenerate">
+                          {briefingLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                        </button>
+                      </span>
+                    ) : undefined
+                  }
+                />
+                <div className="border-t border-line px-5 py-4">
+                  {briefingLoading && !briefing ? (
+                    <p className="flex items-center gap-2 text-[13.5px] text-ink-faint"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading the last few days…</p>
+                  ) : briefing ? (
+                    <div className="prose-doc text-[14px]"><ReactMarkdown>{briefing.content}</ReactMarkdown></div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-[13.5px] text-ink-soft">No briefing yet today. It reads the last few days of updates and tells you who to talk to first.</p>
+                      <Button size="sm" onClick={regenerateBriefing} disabled={briefingLoading}>{briefingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Write today&apos;s briefing</Button>
+                    </div>
+                  )}
+                </div>
+              </Panel>
+
               <Panel>
                 <PanelHeader title="Needs a look" aside={<span className="text-[12px] text-ink-faint">{flags.length === 0 ? 'All clear' : `${flags.length}`}</span>} />
                 {flags.length === 0 ? (
@@ -139,6 +191,13 @@ export default function HomePage() {
             </div>
 
             <aside className="space-y-6">
+              <Panel className="px-5 py-4">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-faint">Reports</p>
+                <div className="mt-2 flex flex-col items-start gap-2">
+                  <ReportButton type="STANDUP_BRIEF" label="Standup brief" teamId={currentTeam.id} />
+                  <ReportButton type="QUARTER_DELIVERY" label="Delivery report" teamId={currentTeam.id} withPeriod defaultDays={91} />
+                </div>
+              </Panel>
               <Panel>
                 <PanelHeader title={currentTeam.name} aside={<span className="text-[12px] text-ink-faint">{members.length} people</span>} />
                 <ul className="divide-y divide-line border-t border-line">
