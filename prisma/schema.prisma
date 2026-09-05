@@ -1,74 +1,97 @@
-// PulseCheck Database Schema
+// PulseCheck v2 schema
+//
+// Spine: Organization > Team > (Update, Thread). Every Update is linked by AI
+// to one or more Threads (ThreadLink). Reports are generated documents over
+// threads and updates. LlmCall records every model call with cost.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ---------------------------------------------------------------------------
+// People and structure
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams       Team[]
+  memberships OrgMembership[]
+}
+
+enum OrgRole {
+  ADMIN // cross-team visibility (director, VP, CTO)
+  MEMBER
+}
+
+model OrgMembership {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      OrgRole  @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  @@unique([orgId, userId])
 }
 
 model User {
   id                  String   @id @default(cuid())
   email               String   @unique
-  password            String?  // Hashed password (null for OAuth users)
+  password            String? // bcrypt hash; null for SSO users
   name                String
-  role                Role     @default(DEVELOPER)
   avatarUrl           String?
+  timezone            String   @default("Asia/Kolkata")
   onboardingCompleted Boolean  @default(false)
-  slackUserId         String?  // Linked Slack user ID
+  slackUserId         String?  @unique
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  statusUpdates   StatusUpdate[]
-  views           View[]
+  updates         Update[]
   teamMemberships TeamMembership[]
+  orgMemberships  OrgMembership[]
+  reportsAbout    Report[]  @relation("ReportSubject")
+  reportsMade     Report[]  @relation("ReportAuthor")
+  threadsCreated  Thread[]
+  threadLinksConfirmed ThreadLink[]
+  llmCalls        LlmCall[]
 }
 
-model StatusUpdate {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  teamId         String?
-  team           Team?    @relation(fields: [teamId], references: [id])
-
-  // Raw input
-  rawTranscript  String
-
-  // AI-extracted structured data (stored as JSON string)
-  completed      String   @default("[]") // JSON array
-  inProgress     String   @default("[]") // JSON array
-  blockers       String   @default("[]") // JSON array
-  needsHelp      String   @default("[]") // JSON array
-  sentiment      String?
-  riskFlags      String   @default("[]") // JSON array
-
-  // AI-generated summary
-  summary        String?
-
-  createdAt      DateTime @default(now())
-}
-
-enum Role {
-  DEVELOPER
-  TESTER
-  MANAGER
-  LEAD
-}
-
-// Team structure
 model Team {
-  id          String           @id @default(cuid())
+  id          String   @id @default(cuid())
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
   name        String
   description String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  // Extraction vocabulary. "engineering" at pilot; "sales", "marketing" later.
+  vocabulary  String   @default("engineering")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  memberships    TeamMembership[]
-  settings       TeamSettings?
-  views          View[]
-  statusUpdates  StatusUpdate[]
+  memberships TeamMembership[]
+  settings    TeamSettings?
+  updates     Update[]
+  threads     Thread[]
+  reports     Report[]
+  llmCalls    LlmCall[]
+}
+
+enum TeamRole {
+  MEMBER
+  LEAD
+  MANAGER
 }
 
 model TeamMembership {
@@ -83,68 +106,194 @@ model TeamMembership {
   @@unique([userId, teamId])
 }
 
-enum TeamRole {
-  MEMBER  // Regular team member
-  LEAD    // Team lead - can manage team settings
-  MANAGER // Manager - can oversee team, view reports
-}
-
 model TeamSettings {
   id              String   @id @default(cuid())
   teamId          String   @unique
   team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  reminderTime    String   @default("16:00")        // When to send reminders
-  reminderDays    String   @default("[1,2,3,4,5]")  // Days of week (Mon-Fri)
-  digestEnabled   Boolean  @default(true)
-  digestSchedule  String   @default("daily")        // daily, weekly
-  digestTime      String   @default("09:00")        // When to send digest
-  timezone        String   @default("UTC")
-  slackChannelId  String?  // Slack channel for digests
-  slackWebhookUrl String?  // Incoming webhook for posting
+  // When the nightly "what did you work on today?" nudge goes out (team tz)
+  nudgeTime       String   @default("18:30")
+  nudgeDays       Int[]    @default([1, 2, 3, 4, 5]) // 0=Sun .. 6=Sat
+  // When the morning briefing goes to leads/managers
+  briefingTime    String   @default("09:00")
+  // Weekday for the "your week" recap to every member
+  recapDay        Int      @default(5)
+  timezone        String   @default("Asia/Kolkata")
+  slackChannelId  String?
+  slackWebhookUrl String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
 
-model View {
-  id           String       @id @default(cuid())
-  name         String
-  description  String?
-  type         String       @default("custom")   // "one-on-one" | "sprint" | "custom"
-  createdById  String
-  createdBy    User         @relation(fields: [createdById], references: [id])
-  teamId       String?
-  team         Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  targetUserId String?      // For 1-on-1: which person's updates to show
-  timeRange    String?      // "1w" | "2w" | "1m" | "3m"
-  columns      ViewColumn[]
-  items        WorkItem[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+// ---------------------------------------------------------------------------
+// Work memory
+// ---------------------------------------------------------------------------
+
+enum UpdateSource {
+  WEB_VOICE
+  WEB_TEXT
+  SLACK_DM
+  SLACK_COMMAND
+  SLACK_MENTION
+  SLACK_THREAD
+  SEED
 }
 
-model ViewColumn {
-  id        String   @id @default(cuid())
-  viewId    String
-  view      View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
-  name      String
-  type      String   // text, number, date, url, select, person
-  options   String   @default("[]") // JSON for select options
-  isSystem  Boolean  @default(false)
-  order     Int
-  createdAt DateTime @default(now())
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  CONCERNED
+  FRUSTRATED
 }
 
-model WorkItem {
-  id        String   @id @default(cuid())
-  viewId    String
-  view      View     @relation(fields: [viewId], references: [id], onDelete: Cascade)
-  values    String   @default("{}") // JSON: {columnId: value}
-  order     Int
+model Update {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  source    UpdateSource @default(WEB_TEXT)
+
+  // What the person actually said. Never rewritten.
+  rawText   String
+
+  // AI extraction. Shape is defined in src/lib/extract.ts (Signals).
+  signals   Json         @default("{}")
+  sentiment Sentiment    @default(NEUTRAL)
+  summary   String?
+
+  // For the Slack confirm-and-fix loop
+  slackChannelId String?
+  slackTs        String?
+
+  embedding Unsupported("vector(1536)")?
+
+  // Optional: the update this one corrects ("fix: ...")
+  supersedesId String?  @unique
+  supersedes   Update?  @relation("Supersedes", fields: [supersedesId], references: [id], onDelete: SetNull)
+  supersededBy Update?  @relation("Supersedes")
+
+  links     ThreadLink[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([teamId, createdAt])
+  @@index([userId, createdAt])
 }
 
-// Password reset tokens
+enum ThreadStatus {
+  ACTIVE
+  BLOCKED
+  DONE
+  STALE
+}
+
+model Thread {
+  id           String       @id @default(cuid())
+  teamId       String
+  team         Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  status       ThreadStatus @default(ACTIVE)
+  // Rolling AI summary, refreshed when new updates link in
+  summary      String?
+  // Aliases the AI has seen for this work ("N1", "N1 integration", "the N1 thing")
+  aliases      String[]     @default([])
+  embedding    Unsupported("vector(1536)")?
+  lastActivityAt DateTime   @default(now())
+  createdById  String?
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdByAi  Boolean      @default(true)
+  // When a human merges threads, the loser points at the winner
+  mergedIntoId String?
+  mergedInto   Thread?      @relation("Merged", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedFrom   Thread[]     @relation("Merged")
+
+  links        ThreadLink[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([teamId, status, lastActivityAt])
+}
+
+model ThreadLink {
+  id          String   @id @default(cuid())
+  threadId    String
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  updateId    String
+  update      Update   @relation(fields: [updateId], references: [id], onDelete: Cascade)
+  confidence  Float    @default(1)
+  // Which part of the update touched this thread (free text from the linker)
+  excerpt     String?
+  confirmedById String?
+  confirmedBy   User?  @relation(fields: [confirmedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@unique([threadId, updateId])
+  @@index([updateId])
+}
+
+// ---------------------------------------------------------------------------
+// Generated documents
+// ---------------------------------------------------------------------------
+
+enum ReportType {
+  DAILY_BRIEFING
+  STANDUP_BRIEF
+  ONE_ON_ONE_PREP
+  SELF_REVIEW
+  WEEK_RECAP
+  QUARTER_DELIVERY
+}
+
+model Report {
+  id            String     @id @default(cuid())
+  type          ReportType
+  teamId        String?
+  team          Team?      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  subjectUserId String?
+  subjectUser   User?      @relation("ReportSubject", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?      @relation("ReportAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  periodStart   DateTime
+  periodEnd     DateTime
+  title         String
+  content       String     // Markdown
+  meta          Json       @default("{}")
+  createdAt     DateTime   @default(now())
+
+  @@index([type, teamId, createdAt])
+  @@index([type, subjectUserId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
+
+model LlmCall {
+  id              String   @id @default(cuid())
+  purpose         String   // extract | link | summarize_thread | chat | report:<type> | embed
+  provider        String   @default("anthropic")
+  model           String
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  cacheReadTokens Int      @default(0)
+  cacheWriteTokens Int     @default(0)
+  latencyMs       Int      @default(0)
+  costUsd         Float    @default(0)
+  ok              Boolean  @default(true)
+  error           String?
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([teamId, createdAt])
+}
+
 model PasswordResetToken {
   id        String   @id @default(cuid())
   email     String
@@ -155,16 +304,13 @@ model PasswordResetToken {
   @@index([email])
 }
 
-// Slack workspace installation
 model SlackInstallation {
-  id              String   @id @default(cuid())
-  teamId          String   // Slack team/workspace ID
-  teamName        String
-  botToken        String   // Bot OAuth token
-  botUserId       String
-  installedBy     String   // Slack user ID who installed
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([teamId])
+  id          String   @id @default(cuid())
+  teamId      String   @unique // Slack workspace ID
+  teamName    String
+  botToken    String
+  botUserId   String
+  installedBy String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

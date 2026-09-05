@@ -3,78 +3,96 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { Activity, Mic, User, MessageCircle, LayoutGrid, LayoutDashboard, LogOut } from 'lucide-react'
+import { Mic, Sun, User, MessageCircle, GitBranch, LogOut, Coins, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTeam } from '@/components/TeamProvider'
 
-const navItems = [
-  { href: '/submit', label: 'Submit', icon: Mic },
-  { href: '/my-updates', label: 'My Updates', icon: User },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/views', label: 'Views', icon: LayoutGrid },
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+const primary = [
+  { href: '/home', label: 'Today', icon: Sun },
+  { href: '/capture', label: 'Capture', icon: Mic },
+  { href: '/threads', label: 'Threads', icon: GitBranch },
+  { href: '/ask', label: 'Ask', icon: MessageCircle },
+  { href: '/me', label: 'Me', icon: User },
 ]
+
+function PulseMark() {
+  return (
+    <svg viewBox="0 0 32 32" width={28} height={28} className="h-7 w-7 shrink-0" aria-hidden>
+      <rect x="0" y="0" width="32" height="32" rx="8" fill="var(--ink)" />
+      <path
+        d="M5 17h5l3-7 4 13 4-9 2 3h4"
+        fill="none"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        stroke="var(--pulse)"
+      />
+    </svg>
+  )
+}
 
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { currentTeam } = useTeam()
+
+  const secondary = [
+    ...(currentTeam ? [{ href: `/teams/${currentTeam.id}/settings`, label: 'Team settings', icon: Settings }] : []),
+    { href: '/admin/costs', label: 'AI spend', icon: Coins },
+  ]
+
+  const Item = ({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Sun }) => {
+    const active = pathname === href || pathname.startsWith(href + '/')
+    return (
+      <Link
+        href={href}
+        title={label}
+        className={cn(
+          'group/item relative flex h-10 items-center gap-3 rounded-md px-2.5 text-[13.5px] font-medium transition-colors',
+          active ? 'bg-surface text-ink shadow-[0_1px_0_0_var(--line)]' : 'text-ink-soft hover:bg-surface/60 hover:text-ink',
+        )}
+      >
+        <Icon className={cn('h-[18px] w-[18px] shrink-0', active ? 'text-pulse' : 'text-ink-faint group-hover/item:text-ink-soft')} />
+        <span className="truncate opacity-0 transition-opacity duration-150 group-hover:opacity-100">{label}</span>
+      </Link>
+    )
+  }
 
   return (
-    <aside className="group fixed left-0 top-0 z-50 flex h-screen w-16 flex-col border-r border-slate-200/60 bg-white transition-all duration-200 hover:w-56">
-      {/* Logo */}
-      <Link href="/dashboard" className="flex h-16 items-center gap-2.5 px-[14px] shrink-0">
-        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 shadow-lg shadow-purple-500/25">
-          <Activity className="h-5 w-5 text-white" />
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent" />
-        </div>
-        <span className="overflow-hidden whitespace-nowrap text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+    <aside className="group fixed left-0 top-0 z-40 flex h-screen w-14 flex-col border-r border-line bg-paper-2/70 backdrop-blur transition-[width] duration-200 hover:w-52">
+      <Link href="/home" className="flex h-14 items-center gap-2.5 px-3.5">
+        <PulseMark />
+        <span className="truncate text-[15px] font-semibold tracking-tight opacity-0 transition-opacity duration-150 group-hover:opacity-100">
           PulseCheck
         </span>
       </Link>
 
-      {/* Nav links */}
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'relative flex h-10 items-center gap-3 rounded-lg px-[5px] transition-all duration-150',
-                isActive
-                  ? 'bg-violet-50 text-violet-700 border-l-[3px] border-violet-600 pl-[2px]'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-              )}
-              title={item.label}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              <span className="overflow-hidden whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                {item.label}
-              </span>
-            </Link>
-          )
-        })}
+      <nav className="flex flex-1 flex-col gap-0.5 px-2 pt-2">
+        {primary.map((i) => (
+          <Item key={i.href} {...i} />
+        ))}
+        <div className="my-3 border-t border-line" />
+        {secondary.map((i) => (
+          <Item key={i.href} {...i} />
+        ))}
       </nav>
 
-      {/* User avatar + sign out */}
       {session?.user && (
-        <div className="border-t border-slate-200/60 px-3 py-3">
+        <div className="border-t border-line px-2 py-2">
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="flex w-full items-center gap-3 rounded-lg px-[5px] py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900"
             title="Sign out"
+            className="flex w-full items-center gap-3 rounded-md px-1.5 py-1.5 text-left text-ink-soft transition-colors hover:bg-surface/60 hover:text-ink"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-white text-sm font-medium">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-paper">
               {session.user.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <div className="overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-              <p className="text-sm font-medium text-slate-900">{session.user.name}</p>
-              <div className="flex items-center gap-1 text-xs text-slate-500">
-                <LogOut className="h-3 w-3" />
-                Sign out
-              </div>
-            </div>
+            </span>
+            <span className="min-w-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+              <span className="block truncate text-[13px] font-medium text-ink">{session.user.name}</span>
+              <span className="flex items-center gap-1 text-[11px] text-ink-faint">
+                <LogOut className="h-3 w-3" /> Sign out
+              </span>
+            </span>
           </button>
         </div>
       )}

@@ -226,7 +226,7 @@ export async function sendDigestEmail({
     </table>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${process.env.NEXTAUTH_URL}/dashboard"
+      <a href="${process.env.NEXTAUTH_URL}/home"
          style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
         View Full Dashboard
       </a>

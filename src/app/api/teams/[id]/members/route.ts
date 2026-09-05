@@ -42,7 +42,6 @@ export async function GET(
             id: true,
             name: true,
             email: true,
-            role: true,
             avatarUrl: true,
           },
         },
@@ -117,7 +116,7 @@ export async function POST(
       },
       include: {
         user: {
-          select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
     })

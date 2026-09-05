@@ -34,13 +34,12 @@ export async function GET(
         memberships: {
           include: {
             user: {
-              select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true },
             },
           },
           orderBy: { createdAt: 'asc' },
         },
         settings: true,
-        _count: { select: { views: true } },
       },
     })
 

@@ -36,7 +36,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent className="relative">
-              <Link href="/submit">
+              <Link href="/capture">
                 <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg shadow-blue-500/25" size="lg">
                   <Mic className="mr-2 h-4 w-4" />
                   Submit Status
@@ -58,7 +58,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent className="relative">
-              <Link href="/my-updates">
+              <Link href="/me">
                 <Button className="w-full" size="lg" variant="outline">
                   <History className="mr-2 h-4 w-4" />
                   View History
@@ -81,7 +81,7 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent className="relative">
-              <Link href="/dashboard">
+              <Link href="/home">
                 <Button className="w-full" size="lg" variant="outline">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Open Dashboard

@@ -58,7 +58,7 @@ export async function PATCH(
       data: { role: role as TeamRole },
       include: {
         user: {
-          select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+          select: { id: true, name: true, email: true, avatarUrl: true },
         },
       },
     })

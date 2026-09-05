@@ -94,7 +94,7 @@ export default function OnboardingPage() {
 
       // Returning users go straight to dashboard; new users see tips
       if (isReturningUser) {
-        router.push('/dashboard')
+        router.push('/home')
         return
       }
       setStep('tips')
@@ -122,7 +122,7 @@ export default function OnboardingPage() {
 
       // Returning users go straight to dashboard; new users see tips
       if (isReturningUser) {
-        router.push('/dashboard')
+        router.push('/home')
         return
       }
       setStep('tips')
@@ -146,7 +146,7 @@ export default function OnboardingPage() {
       await update()
 
       // Redirect to dashboard
-      router.push('/dashboard')
+      router.push('/home')
     } catch {
       setError('Failed to complete onboarding')
     } finally {
@@ -366,9 +366,9 @@ export default function OnboardingPage() {
                   <LayoutGrid className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium">Track deliverables in Views</p>
+                  <p className="font-medium">Ask, don't chase</p>
                   <p className="text-sm text-muted-foreground">
-                    Create views to track tasks, features, or any work items your team is delivering.
+                    Ask PulseCheck who is working on what, or open a person's page before a 1-on-1. Reports write themselves from the team's updates.
                   </p>
                 </div>
               </div>

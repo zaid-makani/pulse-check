@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pulsecheck-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pulsecheck
+      POSTGRES_PASSWORD: pulsecheck
+      POSTGRES_DB: pulsecheck
+    ports:
+      - "5433:5432"
+    volumes:
+      - pulsecheck-pgdata:/var/lib/postgresql/data
+
+volumes:
+  pulsecheck-pgdata:

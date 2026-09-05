@@ -45,7 +45,7 @@ export default function NewTeamPage() {
 
       // Refresh teams list and redirect
       await refreshTeams()
-      router.push('/dashboard')
+      router.push('/home')
     } catch {
       setError('An error occurred. Please try again.')
       setIsLoading(false)
@@ -57,7 +57,7 @@ export default function NewTeamPage() {
       <div className="container mx-auto max-w-lg px-4 py-8">
         {/* Back link */}
         <Link
-          href="/dashboard"
+          href="/home"
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
