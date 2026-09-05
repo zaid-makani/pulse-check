@@ -23,6 +23,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # DATABASE_URL is needed by prisma generate only for the provider; any value works at build time
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 RUN npx prisma generate && npm run build
+# A self-contained Prisma CLI for running migrations at container start
+RUN mkdir -p /app/migrate && npm install --prefix /app/migrate --no-audit --no-fund prisma@6.19.2 dotenv@17
 
 FROM node:22-alpine AS run
 WORKDIR /app
@@ -33,10 +35,9 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
-COPY --from=build /app/node_modules/prisma ./node_modules/prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/dotenv ./node_modules/dotenv
+COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=build /app/migrate/node_modules ./node_modules
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh && chown -R app:app /app
 USER app
