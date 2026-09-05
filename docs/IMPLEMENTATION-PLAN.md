@@ -43,6 +43,19 @@ What is removed from v1: `View`, `ViewColumn`, `WorkItem`, `PasswordResetToken` 
 
 What is kept: `User`, `Team`, `TeamMembership`, `TeamSettings`, `SlackInstallation`.
 
+## Progress (5 September 2026)
+
+| Phase | State | Notes |
+|---|---|---|
+| 0 Foundation | Done | Postgres + pgvector, schema v2, structured extraction, cost log, new shell |
+| 1 Threads | Done | AI linking, rolling summaries, merge/rename, backfill script |
+| 2 Slack | Built, untested | Needs a workspace: see `slack/README.md`. Socket Mode for local dev |
+| 3 Ask | Done | Agent with tools, streaming web chat, Slack @mention and `/pulse ask` |
+| 4 Reports | Done | Six templates, cron tick for briefings and recaps |
+| 5 Pilot readiness | Partial | Dockerfile done. Org deploy config, pilot instrumentation, journey test pending |
+
+Everything is on the `v2` branch. Merge to `master` before cloning onto the office laptop.
+
 ## Phases
 
 Each phase ends with something a human can try. Effort is in working sessions, not calendar days.

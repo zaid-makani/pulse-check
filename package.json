@@ -10,7 +10,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "db:backfill": "npx tsx scripts/backfill.ts"
+    "db:backfill": "npx tsx scripts/backfill.ts",
+    "slack:dev": "npx tsx scripts/slack-dev.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
@@ -21,6 +22,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@slack/oauth": "^3.0.4",
+    "@slack/socket-mode": "^3.0.1",
     "@slack/web-api": "^7.13.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

@@ -1,0 +1,51 @@
+{
+  "display_information": {
+    "name": "PulseCheck",
+    "description": "Tell me what you worked on. I remember, connect, and report.",
+    "background_color": "#1f1d1a"
+  },
+  "features": {
+    "app_home": {
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "PulseCheck",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/pulse",
+        "description": "Record an update, or ask about your teams",
+        "usage_hint": "<what you worked on> | ask <question>",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "chat:write",
+        "commands",
+        "files:read",
+        "im:history",
+        "im:read",
+        "im:write",
+        "users:read",
+        "users:read.email"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": ["app_mention", "message.im"]
+    },
+    "interactivity": {
+      "is_enabled": false
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

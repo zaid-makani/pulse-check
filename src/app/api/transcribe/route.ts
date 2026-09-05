@@ -1,44 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI, { toFile } from 'openai'
+import { handle, HttpError, requireUserId } from '@/lib/authz'
+import { transcribeAudio } from '@/lib/transcribe'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+export const POST = handle(async (request: NextRequest) => {
+  const me = await requireUserId()
+  const formData = await request.formData()
+  const audio = formData.get('audio')
+  if (!(audio instanceof File)) throw new HttpError(400, 'No audio file provided')
+  const text = await transcribeAudio(Buffer.from(await audio.arrayBuffer()), audio.name || 'audio.webm', { userId: me })
+  return NextResponse.json({ text })
 })
-
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData()
-    const audioFile = formData.get('audio') as File
-
-    if (!audioFile) {
-      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
-    }
-
-    console.log('Received audio file:', {
-      name: audioFile.name,
-      type: audioFile.type,
-      size: audioFile.size,
-    })
-
-    // Convert the File to a format OpenAI accepts
-    const arrayBuffer = await audioFile.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    // Create a file object that OpenAI can use
-    const file = await toFile(buffer, 'audio.webm', { type: 'audio/webm' })
-
-    const transcription = await openai.audio.transcriptions.create({
-      file: file,
-      model: 'whisper-1',
-      language: 'en',
-    })
-
-    console.log('Transcription successful:', transcription.text.slice(0, 100))
-
-    return NextResponse.json({ text: transcription.text })
-  } catch (error) {
-    console.error('Transcription error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: `Failed to transcribe: ${errorMessage}` }, { status: 500 })
-  }
-}

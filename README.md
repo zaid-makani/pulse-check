@@ -9,11 +9,23 @@ A work memory for teams. People tell it what they did in whatever way costs them
 ## Running locally
 
 ```bash
-cp .env.example .env   # fill in keys
+cp .env.example .env         # fill in ANTHROPIC_API_KEY, OPENAI_API_KEY, NEXTAUTH_SECRET
+docker compose up -d         # Postgres with pgvector on :5433
 npm install
 npm run db:migrate
-npm run db:seed
+npm run db:seed              # two teams, ten people, three weeks of updates
+npm run db:backfill -- --link   # embeddings for the seed (needs the API keys)
 npm run dev
 ```
 
-The v2 plan moves the database to PostgreSQL. Until Phase 0 lands, the app still runs on SQLite as configured in `.env.example`.
+Sign in as `zaid@example.com` / `Test1234!`.
+
+Slack (optional, see `slack/README.md`): create the app from `slack/manifest.json`, put the tokens in `.env`, then `npm run slack:dev` in a second terminal.
+
+## Scheduled jobs
+
+`POST /api/cron/tick` with `Authorization: Bearer $CRON_SECRET`, every 15 minutes. It sends the nightly nudge, writes the morning briefing, and sends the Friday recap, each in the team's timezone. Add `?dry=1` to see what would run, or `?force=nudge|briefing|recap` to run one now.
+
+## Deploying
+
+`Dockerfile` builds a standalone image that runs migrations on start. Required env: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, and the Slack tokens.
