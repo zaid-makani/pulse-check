@@ -22,10 +22,15 @@ interface Costs {
 export default function CostsPage() {
   const [days, setDays] = useState(30)
   const [data, setData] = useState<Costs | null>(null)
+  const [denied, setDenied] = useState(false)
 
   useEffect(() => {
     setData(null)
-    fetch(`/api/admin/costs?days=${days}`).then((r) => r.json()).then(setData)
+    fetch(`/api/admin/costs?days=${days}`).then(async (r) => {
+      if (r.status === 403) { setDenied(true); return }
+      const d = await r.json()
+      if (Array.isArray(d.byDay)) setData(d)
+    })
   }, [days])
 
   const max = data ? Math.max(0.0001, ...data.byDay.map((d) => d.costUsd)) : 1
@@ -45,7 +50,9 @@ export default function CostsPage() {
             </div>
           }
         />
-        {!data ? (
+        {denied ? (
+          <Panel className="px-5 py-6 text-[13.5px] text-ink-soft">This page is for leads and managers.</Panel>
+        ) : !data ? (
           <div className="flex justify-center py-16 text-ink-faint"><Loader2 className="h-4 w-4 animate-spin" /></div>
         ) : (
           <div className="space-y-6">

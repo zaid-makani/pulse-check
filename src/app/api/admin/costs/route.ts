@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { handle, requireUserId, visibleTeamIds } from '@/lib/authz'
+import { handle, HttpError, requireUserId, visibleTeamIds } from '@/lib/authz'
 
 /**
  * GET /api/admin/costs?days=30
@@ -10,6 +10,11 @@ import { handle, requireUserId, visibleTeamIds } from '@/lib/authz'
  */
 export const GET = handle(async (request: NextRequest) => {
   const me = await requireUserId()
+  const [manages, orgAdmin] = await Promise.all([
+    prisma.teamMembership.count({ where: { userId: me, role: { in: ['LEAD', 'MANAGER'] } } }),
+    prisma.orgMembership.count({ where: { userId: me, role: 'ADMIN' } }),
+  ])
+  if (manages === 0 && orgAdmin === 0) throw new HttpError(403, 'Leads and managers only')
   const days = Math.min(parseInt(new URL(request.url).searchParams.get('days') || '30', 10) || 30, 365)
   const since = new Date()
   since.setDate(since.getDate() - days)

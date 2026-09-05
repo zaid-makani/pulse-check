@@ -1,139 +1,70 @@
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { Mic, MessageCircle, FileText, ArrowRight } from 'lucide-react'
+import { authOptions } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { Mic, LayoutDashboard, History, Zap, ArrowRight, Sparkles } from 'lucide-react'
 
-export default function Home() {
+function Mark() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
-      <div className="container mx-auto px-4 py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-4 py-2 rounded-full text-sm mb-6 shadow-lg shadow-violet-500/25">
-            <Sparkles className="h-4 w-4" />
-            AI-Powered Team Status Updates
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">
-            Keep your finger on the pulse
-          </h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Voice-first status updates, AI-powered insights, and a dashboard that tells you what
-            matters. Stop chasing updates, start understanding your team.
+    <svg viewBox="0 0 32 32" width={40} height={40} aria-hidden>
+      <rect x="0" y="0" width="32" height="32" rx="9" fill="var(--ink)" />
+      <path d="M5 17h5l3-7 4 13 4-9 2 3h4" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" stroke="var(--pulse)" />
+    </svg>
+  )
+}
+
+export default async function Landing() {
+  const session = await getServerSession(authOptions)
+  if (session?.user) redirect('/home')
+
+  return (
+    <div className="min-h-screen bg-paper">
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+        <span className="flex items-center gap-2.5"><Mark /><span className="text-[17px] font-semibold tracking-tight">PulseCheck</span></span>
+        <nav className="flex items-center gap-2">
+          <Link href="/login"><Button variant="ghost" size="sm">Sign in</Button></Link>
+          <Link href="/signup"><Button size="sm">Create account</Button></Link>
+        </nav>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6">
+        <section className="py-20">
+          <p className="text-[12.5px] font-semibold uppercase tracking-wide text-pulse-ink">A work memory for teams</p>
+          <h1 className="mt-3 max-w-3xl font-serif text-[52px] font-medium leading-[1.05] tracking-tight">Say what you did.<br />PulseCheck remembers, connects, and reports.</h1>
+          <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-ink-soft">
+            People tell it what they worked on in thirty seconds, by voice or from Slack. It turns that into an always-current picture of who is doing what and where the risk is. Managers ask it questions instead of asking people. Everyone gets their own record back at review time.
           </p>
-        </div>
-
-        {/* Main Actions */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-20">
-          <Card className="group relative overflow-hidden border-0 bg-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-200/50 transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardHeader className="relative">
-              <div className="h-14 w-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/25">
-                <Mic className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">Submit Update</CardTitle>
-              <CardDescription className="text-slate-500">
-                Record your status with voice or text. AI extracts key information automatically.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
-              <Link href="/capture">
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-lg shadow-blue-500/25" size="lg">
-                  <Mic className="mr-2 h-4 w-4" />
-                  Submit Status
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="group relative overflow-hidden border-0 bg-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-purple-200/50 transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardHeader className="relative">
-              <div className="h-14 w-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/25">
-                <History className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">My Updates</CardTitle>
-              <CardDescription className="text-slate-500">
-                View your own update history. See both what you said and how AI interpreted it.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
-              <Link href="/me">
-                <Button className="w-full" size="lg" variant="outline">
-                  <History className="mr-2 h-4 w-4" />
-                  View History
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="group relative overflow-hidden border-0 bg-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-emerald-200/50 transition-all duration-300 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardHeader className="relative">
-              <div className="h-14 w-14 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/25">
-                <LayoutDashboard className="h-7 w-7 text-white" />
-              </div>
-              <CardTitle className="text-xl">Team Dashboard</CardTitle>
-              <CardDescription className="text-slate-500">
-                See your team&apos;s pulse at a glance. Blockers, progress, and AI-generated
-                insights.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="relative">
-              <Link href="/home">
-                <Button className="w-full" size="lg" variant="outline">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Open Dashboard
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Features */}
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">How It Works</h2>
-            <p className="text-slate-500">Three simple steps to better team visibility</p>
+          <div className="mt-8 flex gap-3">
+            <Link href="/signup"><Button size="lg">Get started <ArrowRight className="h-4 w-4" /></Button></Link>
+            <Link href="/login"><Button size="lg" variant="outline">Sign in</Button></Link>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="h-12 w-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-900/20">
-                <span className="font-bold text-white">1</span>
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-2">Speak Naturally</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Just talk about what you&apos;re working on, blockers, and what you need help with.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="h-12 w-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-900/20">
-                <span className="font-bold text-white">2</span>
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-2">AI Extracts Insights</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Claude analyzes your update and extracts completed tasks, blockers, and sentiment.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="h-12 w-12 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-900/20">
-                <span className="font-bold text-white">3</span>
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-2">Track &amp; Review</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                View your history, see team pulse, and managers can generate AI summaries.
-              </p>
-            </div>
-          </div>
-        </div>
+        </section>
 
-        {/* Footer */}
-        <div className="text-center mt-20 text-sm text-slate-400">
-          <p>Built with Next.js, Tailwind CSS, and Claude AI</p>
-        </div>
-      </div>
+        <section className="grid gap-6 border-t border-line py-16 md:grid-cols-3">
+          <Feature icon={Mic} title="Capture in thirty seconds" body="Talk like you would in standup. A voice note here, a reply to the nightly Slack nudge, or a line of text. Nothing to fill in." />
+          <Feature icon={MessageCircle} title="Ask, don't chase" body="Who is on the N1 integration? What is blocked on another team? What has Priya been doing? Answers come from people's own words, with sources." />
+          <Feature icon={FileText} title="Documents that write themselves" body="A morning briefing for leads. 1-on-1 prep for managers. A self-review draft for every person. Quarter delivery notes for the CTO." />
+        </section>
+
+        <section className="border-t border-line py-16">
+          <blockquote className="max-w-2xl font-serif text-[24px] leading-snug tracking-tight text-ink">
+            &ldquo;It is not another sheet to fill. It is the thing that fills the sheets.&rdquo;
+          </blockquote>
+        </section>
+      </main>
+
+      <footer className="mx-auto max-w-5xl px-6 py-8 text-[12.5px] text-ink-faint">PulseCheck · built for the teams that use it</footer>
+    </div>
+  )
+}
+
+function Feature({ icon: Icon, title, body }: { icon: typeof Mic; title: string; body: string }) {
+  return (
+    <div>
+      <span className="flex h-9 w-9 items-center justify-center rounded-md bg-pulse-soft text-pulse-ink"><Icon className="h-4 w-4" /></span>
+      <h3 className="mt-4 text-[16px] font-semibold tracking-tight">{title}</h3>
+      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-soft">{body}</p>
     </div>
   )
 }

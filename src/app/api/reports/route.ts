@@ -37,10 +37,20 @@ export const GET = handle(async (req: NextRequest) => {
   if (teamId) await requireTeamView(me, teamId)
   const teamIds = teamId ? [teamId] : await visibleTeamIds(me)
 
+  // People whose 1-on-1 preps this caller may see: members of teams they lead or manage, or of their org if admin.
+  const managed = await prisma.teamMembership.findMany({ where: { userId: me, role: { in: ['LEAD', 'MANAGER'] }, teamId: { in: teamIds } }, select: { teamId: true } })
+  const orgAdmin = await prisma.orgMembership.findMany({ where: { userId: me, role: 'ADMIN' }, select: { orgId: true } })
+  const managedTeamIds = orgAdmin.length ? teamIds : managed.map((m) => m.teamId)
+  const managedPeople = managedTeamIds.length
+    ? (await prisma.teamMembership.findMany({ where: { teamId: { in: managedTeamIds } }, select: { userId: true } })).map((m) => m.userId).filter((id) => id !== me)
+    : []
+
   const rows = await prisma.report.findMany({
     where: {
       ...(type && (TYPES as readonly string[]).includes(type) ? { type: type as (typeof TYPES)[number] } : {}),
-      ...(subjectUserId ? { subjectUserId } : { OR: [{ teamId: { in: teamIds } }, { subjectUserId: me }] }),
+      ...(subjectUserId ? { subjectUserId } : { OR: [{ teamId: { in: teamIds } }, { subjectUserId: me }, { type: 'ONE_ON_ONE_PREP', subjectUserId: { in: managedPeople } }] }),
+      // A 1-on-1 prep is the manager's document, never shown to its subject.
+      ...(!subjectUserId || subjectUserId === me ? { NOT: { type: 'ONE_ON_ONE_PREP', subjectUserId: me } } : {}),
     },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -55,7 +65,11 @@ const PostSchema = z.object({
   subjectUserId: z.string().optional(),
   periodStart: z.string().datetime().optional(),
   periodEnd: z.string().datetime().optional(),
+  force: z.boolean().optional(),
 })
+
+/** Report types that are "today's copy": a second request the same day returns the existing one. */
+const REUSE_HOURS: Partial<Record<(typeof TYPES)[number], number>> = { DAILY_BRIEFING: 20, STANDUP_BRIEF: 20, WEEK_RECAP: 20 }
 
 /** POST /api/reports generates and stores a report. */
 export const POST = handle(async (req: NextRequest) => {
@@ -72,6 +86,15 @@ export const POST = handle(async (req: NextRequest) => {
   } else {
     if (!teamId) throw new HttpError(400, 'teamId required')
     await requireTeamView(me, teamId)
+  }
+
+  const reuse = REUSE_HOURS[type]
+  if (reuse && !parsed.data.force) {
+    const existing = await prisma.report.findFirst({
+      where: { type, teamId: teamId ?? null, subjectUserId: subjectUserId ?? null, createdAt: { gte: new Date(Date.now() - reuse * 3_600_000) } },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (existing) return NextResponse.json(existing)
   }
 
   const dp = defaultPeriod(type)

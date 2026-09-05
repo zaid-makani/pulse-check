@@ -92,10 +92,12 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <select value={t.rawStatus} onChange={(e) => patch({ status: e.target.value }, 'status')} className="h-8 rounded-md border border-line bg-surface px-2 text-[12.5px]">
+            <label className="flex items-center gap-1.5 text-[12px] text-ink-faint">Status
+            <select value={t.rawStatus} onChange={(e) => patch({ status: e.target.value }, 'status')} className="h-8 rounded-md border border-line bg-surface px-2 text-[12.5px] text-ink" title="Set by AI from the latest updates; override it here">
               <option value="ACTIVE">Active</option><option value="BLOCKED">Blocked</option><option value="DONE">Done</option>
             </select>
-            <Button variant="outline" size="sm" onClick={() => patch({ refresh: true }, 'refresh')} disabled={busy === 'refresh'}>
+            </label>
+            <Button variant="outline" size="sm" onClick={() => patch({ refresh: true }, 'refresh')} disabled={busy === 'refresh'} title="Rewrite the summary from the latest updates">
               {busy === 'refresh' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Re-summarize
             </Button>
             <Button variant="outline" size="sm" onClick={openMerge}><GitMerge className="h-4 w-4" /> Merge into…</Button>

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { Mic, Sun, User, MessageCircle, GitBranch, LogOut, Coins, Settings } from 'lucide-react'
+import { Mic, Sun, User, MessageCircle, GitBranch, LogOut, Coins, Settings, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTeam } from '@/components/TeamProvider'
 
@@ -12,6 +12,7 @@ const primary = [
   { href: '/capture', label: 'Capture', icon: Mic },
   { href: '/threads', label: 'Threads', icon: GitBranch },
   { href: '/ask', label: 'Ask', icon: MessageCircle },
+  { href: '/reports', label: 'Reports', icon: FileText },
   { href: '/me', label: 'Me', icon: User },
 ]
 
@@ -34,11 +35,11 @@ function PulseMark() {
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const { currentTeam } = useTeam()
+  const { currentTeam, me, managesCurrent } = useTeam()
 
   const secondary = [
-    ...(currentTeam ? [{ href: `/teams/${currentTeam.id}/settings`, label: 'Team settings', icon: Settings }] : []),
-    { href: '/admin/costs', label: 'AI spend', icon: Coins },
+    ...(currentTeam ? [{ href: `/teams/${currentTeam.id}/settings`, label: managesCurrent ? 'Team settings' : 'Team', icon: Settings }] : []),
+    ...(me?.isManager ? [{ href: '/admin/costs', label: 'AI spend', icon: Coins }] : []),
   ]
 
   const Item = ({ href, label, icon: Icon }: { href: string; label: string; icon: typeof Sun }) => {

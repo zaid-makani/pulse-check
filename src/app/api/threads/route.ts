@@ -13,6 +13,7 @@ export const GET = handle(async (request: NextRequest) => {
   const sp = new URL(request.url).searchParams
   const teamId = sp.get('teamId')
   const q = sp.get('q')?.trim()
+  const mine = sp.get('mine') === '1'
 
   let teamIds: string[]
   if (teamId) {
@@ -26,6 +27,7 @@ export const GET = handle(async (request: NextRequest) => {
     where: {
       teamId: { in: teamIds },
       mergedIntoId: null,
+      ...(mine ? { links: { some: { update: { userId: me } } } } : {}),
       ...(q ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { aliases: { hasSome: [q] } }, { summary: { contains: q, mode: 'insensitive' } }] } : {}),
     },
     include: {

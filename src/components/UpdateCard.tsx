@@ -22,12 +22,14 @@ export function UpdateCard({
   update,
   showAuthor = true,
   compact = false,
+  showSentiment = true,
   onEdit,
   onDelete,
 }: {
   update: UpdateView
   showAuthor?: boolean
   compact?: boolean
+  showSentiment?: boolean
   onEdit?: (u: UpdateView) => void
   onDelete?: (u: UpdateView) => void
 }) {
@@ -55,7 +57,7 @@ export function UpdateCard({
               {relativeTime(update.createdAt)} · {timeLabel(update.createdAt)}
             </span>
             <Src className="h-3 w-3 text-ink-faint" />
-            <SentimentDot value={update.sentiment} />
+            {showSentiment && <SentimentDot value={update.sentiment} />}
             <span className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover/card:opacity-100">
               {onEdit && (
                 <button onClick={() => onEdit(update)} className="rounded p-1 text-ink-faint hover:bg-paper-2 hover:text-ink" title="Edit">

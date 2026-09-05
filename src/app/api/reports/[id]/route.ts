@@ -12,8 +12,8 @@ async function loadForUser(id: string, me: string) {
   if (!r) throw new HttpError(404, 'Report not found')
   let ok = false
   if (r.subjectUserId) {
-    if (r.subjectUserId === me) ok = true
-    else {
+    if (r.subjectUserId === me) ok = r.type !== 'ONE_ON_ONE_PREP'
+    if (!ok) {
       const shared = await prisma.teamMembership.findMany({ where: { userId: r.subjectUserId }, select: { teamId: true } })
       for (const s of shared) {
         const role = await teamRole(me, s.teamId)

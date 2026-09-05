@@ -19,16 +19,24 @@ interface Turn {
   error?: string
 }
 
-const starters = [
+const managerStarters = [
   'What needs my attention today?',
   'Who is working on the N1 integration and where is it?',
-  'What has Rahul been doing for the last two weeks?',
+  'Who has been quiet this week, and what were they last on?',
   'Is anything at risk for this quarter?',
   'Who is blocked on another team?',
 ]
+const memberStarters = [
+  'What is the latest on the N1 integration?',
+  'What did I say I was working on last week?',
+  'Is anyone else touching bulk upload?',
+  'What is blocked on the team right now?',
+  'What shipped in the last two weeks?',
+]
 
 export default function AskPage() {
-  const { currentTeam, teams } = useTeam()
+  const { currentTeam, teams, me } = useTeam()
+  const starters = me?.isManager ? managerStarters : memberStarters
   const [scope, setScope] = useState<'team' | 'all'>('all')
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
