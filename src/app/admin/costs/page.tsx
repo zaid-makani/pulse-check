@@ -60,7 +60,7 @@ export default function CostsPage() {
               <div className="flex h-28 items-end gap-[3px] px-5 pb-4">
                 {data.byDay.length === 0 && <p className="text-[13px] text-ink-faint">No calls yet.</p>}
                 {data.byDay.map((d) => (
-                  <div key={d.day} className="group relative flex-1" title={`${d.day}: ${usd(d.costUsd)}`}>
+                  <div key={d.day} className="group relative max-w-6 flex-1" title={`${d.day}: ${usd(d.costUsd)}`}>
                     <div className="w-full rounded-t bg-ink/80 transition-colors group-hover:bg-pulse" style={{ height: `${Math.max(2, (d.costUsd / max) * 96)}px` }} />
                   </div>
                 ))}
