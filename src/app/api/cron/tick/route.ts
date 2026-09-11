@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // --- Nightly nudge ------------------------------------------------------
     if (slackOn && ((workday && inWindow(local.minutes, s.nudgeTime)) || force === 'nudge')) {
       for (const m of team.memberships) {
-        if (m.role === 'MANAGER' || !m.user.slackUserId) continue
+        if ((m.role === 'MANAGER' && force !== 'nudge') || !m.user.slackUserId) continue
         const [posted, nudged] = await Promise.all([
           prisma.update.findFirst({ where: { userId: m.userId, teamId: team.id, createdAt: { gte: dayStart } }, select: { id: true } }),
           prisma.slackNudge.findFirst({ where: { userId: m.userId, teamId: team.id, sentAt: { gte: dayStart } }, select: { id: true } }),

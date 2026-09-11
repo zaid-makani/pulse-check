@@ -110,6 +110,14 @@ function splitTeamPrefix(text: string): { explicit?: string; body: string } {
 // Messages
 // ---------------------------------------------------------------------------
 
+/** Short text that reads as a question about the team, not a report of work. */
+export function looksLikeQuestion(text: string): boolean {
+  const t = text.trim()
+  if (!t || t.length > 200) return false
+  if (t.endsWith('?')) return true
+  return /^(who|what|which|where|when|why|how|is|are|was|were|does|do|did|has|have|can|could|should|any|anyone|anything)\b/i.test(t) && !/\b(i|i'm|im|i've|ive|we|my|our|today|yesterday)\b/i.test(t.split(/\s+/).slice(0, 4).join(' '))
+}
+
 async function audioToText(files: SlackFile[] | undefined, ctx: { userId: string; teamId?: string }): Promise<string> {
   if (!files?.length) return ''
   const parts: string[] = []
@@ -132,7 +140,7 @@ function confirmationText(u: UpdateView, teamName: string): string {
   if (u.threads.length) lines.push(`Threads: ${u.threads.map((t) => t.name).join(', ')}`)
   if (s.blockers.length) lines.push(`:no_entry: Blocked: ${s.blockers.map((b) => (b.waitingOn ? `${b.text} (waiting on ${b.waitingOn})` : b.text)).join('; ')}`)
   if (s.asks.length) lines.push(`:raising_hand: Asks: ${s.asks.join('; ')}`)
-  lines.push(`_Reply \`fix: <the whole update again>\` if I misread it._`)
+  lines.push(`_Reply \`fix: <the whole update again>\` if I misread it. Ask me anything about the team by just asking._`)
   return lines.join('\n')
 }
 
@@ -153,8 +161,10 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   const fixMatch = text.match(/^fix\s*:\s*(.+)$/is)
   const askMatch = text.match(/^(?:ask|q)\s*:\s*(.+)$/is)
 
-  if (askMatch) {
-    await answerQuestion({ channel: ev.channel, threadTs: ev.thread_ts ?? ev.ts, userId: user.id, userName: user.name, question: askMatch[1] })
+  // A question typed to the bot is a question, not a status update.
+  const question = askMatch ? askMatch[1] : looksLikeQuestion(text) ? text : null
+  if (question) {
+    await answerQuestion({ channel: ev.channel, threadTs: ev.thread_ts ?? ev.ts, userId: user.id, userName: user.name, question })
     return
   }
 
@@ -184,6 +194,7 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
     }
   }
 
+  console.log('[slack] ingesting for', user.name, 'to', team.name)
   const update = await ingestUpdate({
     userId: user.id,
     teamId: team.id,
@@ -193,7 +204,9 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
     slackTs: ev.ts,
   })
   const prefix = !hasText && spoken ? `_Heard:_ "${spoken.slice(0, 300)}"\n\n` : ''
+  console.log('[slack] replying in', ev.channel)
   await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: prefix + confirmationText(update, team.name) })
+  console.log('[slack] replied')
 }
 
 export async function handleMention(ev: SlackMentionEvent) {

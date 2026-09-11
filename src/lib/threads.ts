@@ -130,7 +130,9 @@ export async function linkUpdateToThreads(input: {
 
   for (const id of touched) {
     try {
+      console.log('[threads] refreshing', id)
       await refreshThread(id, { teamId, userId })
+      console.log('[threads] refreshed', id)
     } catch (err) {
       console.error('refreshThread failed', id, err)
     }

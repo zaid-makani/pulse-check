@@ -10,7 +10,8 @@ import { prisma } from '@/lib/db'
  * that the admin cost page can show exactly what the org key is paying for.
  */
 
-export const anthropic = new Anthropic()
+// 90s per attempt keeps a stalled call from wedging the Slack bot; the SDK retries twice on transient errors.
+export const anthropic = new Anthropic({ timeout: 90_000, maxRetries: 2 })
 
 // Two tiers. "fast" handles per-update work (extraction, thread linking,
 // rolling summaries). "smart" handles anything a human reads directly
