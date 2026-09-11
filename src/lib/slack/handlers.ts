@@ -1,5 +1,7 @@
 import type { KnownBlock } from '@slack/web-api'
+import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { structured } from '@/lib/llm'
 import { slack, appUrl } from '@/lib/slack/client'
 import { ingestUpdate, reextractUpdate, type UpdateView } from '@/lib/updates'
 import { transcribeAudio } from '@/lib/transcribe'
@@ -110,6 +112,31 @@ function splitTeamPrefix(text: string): { explicit?: string; body: string } {
 // Messages
 // ---------------------------------------------------------------------------
 
+/** Heuristic first; if unsure and the text is short, ask the model. */
+export async function isQuestion(text: string, ctx: { teamId?: string; userId?: string }): Promise<boolean> {
+  if (looksLikeQuestion(text)) return true
+  if (text.length > 400) return false
+  if (/\b(want|would like|need|wanted|wondering|curious|tell me|let me know|show me|any idea|any update)\b/i.test(text) || /\b(status|update|latest|happening|going on|progress)\b.*\b(on|with|of|for)\b/i.test(text)) {
+    try {
+      const r = await structured(
+        { purpose: 'intent', teamId: ctx.teamId, userId: ctx.userId },
+        {
+          system: 'Classify one message sent to a work assistant. "question" means the person is asking for information about work, people, or status. "update" means the person is reporting what they did, are doing, or are stuck on.',
+          prompt: text,
+          schema: IntentSchema,
+          effort: 'low',
+        },
+      )
+      return r.intent === 'question'
+    } catch {
+      return false
+    }
+  }
+  return false
+}
+
+const IntentSchema = z.object({ intent: z.enum(['question', 'update']) })
+
 /** Short text that reads as a question about the team, not a report of work. */
 export function looksLikeQuestion(text: string): boolean {
   const t = text.trim()
@@ -161,14 +188,7 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   const fixMatch = text.match(/^fix\s*:\s*(.+)$/is)
   const askMatch = text.match(/^(?:ask|q)\s*:\s*(.+)$/is)
 
-  // A question typed to the bot is a question, not a status update.
-  const question = askMatch ? askMatch[1] : looksLikeQuestion(text) ? text : null
-  if (question) {
-    await answerQuestion({ channel: ev.channel, threadTs: ev.thread_ts ?? ev.ts, userId: user.id, userName: user.name, question })
-    return
-  }
-
-  const { explicit, body } = splitTeamPrefix(fixMatch ? fixMatch[1] : text)
+  const { explicit, body } = splitTeamPrefix(fixMatch ? fixMatch[1] : askMatch ? askMatch[1] : text)
   const team = await pickTeam(user.id, { channel: ev.channel, threadTs: ev.thread_ts, explicit })
   if (!team) {
     await slack().chat.postMessage({ channel: ev.channel, thread_ts: ev.thread_ts ?? ev.ts, text: `You're not on a team yet. Join one at ${appUrl('/teams/join')}.` })
@@ -182,7 +202,7 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   const hasText = !!body
   const replyTo = ev.thread_ts ?? ev.ts
 
-  // Acknowledge at once; the real confirmation replaces this message when ready.
+  // Acknowledge at once; the real reply replaces this message when ready.
   let ackTs: string | undefined
   try {
     const ack = await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: spoken && !hasText ? `_Heard you. Reading it…_` : `_Reading that…_` })
@@ -190,9 +210,18 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   } catch {
     ackTs = undefined
   }
-  const finish = async (text: string) => {
-    if (ackTs) await slack().chat.update({ channel: ev.channel, ts: ackTs, text })
-    else await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text })
+  const finish = async (out: string) => {
+    if (ackTs) await slack().chat.update({ channel: ev.channel, ts: ackTs, text: out })
+    else await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: out })
+  }
+
+  // A question, typed or spoken, is answered rather than recorded.
+  if (!fixMatch && (askMatch || (await isQuestion(text, { teamId: team.id, userId: user.id })))) {
+    const teamIds = await visibleTeamIds(user.id)
+    const { text: answer } = await runAsk({ userId: user.id, askerName: user.name, teamIds, question: text })
+    const heard = spoken && !hasText ? `_Heard:_ "${spoken.slice(0, 300)}"\n\n` : ''
+    await finish(heard + markdownToMrkdwn(answer || 'I could not find anything on that.'))
+    return
   }
 
   if (fixMatch) {
