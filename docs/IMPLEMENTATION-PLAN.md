@@ -49,7 +49,7 @@ What is kept: `User`, `Team`, `TeamMembership`, `TeamSettings`, `SlackInstallati
 |---|---|---|
 | 0 Foundation | Done | Postgres + pgvector, schema v2, structured extraction, cost log, new shell |
 | 1 Threads | Done | AI linking, rolling summaries, merge/rename, backfill script |
-| 2 Slack | Built, untested | Needs a workspace: see `slack/README.md`. Socket Mode for local dev |
+| 2 Slack | Verified 11 Sep | Nudge DM, text and voice-clip replies, confirmation, spoken and typed questions answered. Tested on a personal workspace over Socket Mode with a polling safety net |
 | 3 Ask | Done | Agent with tools, streaming web chat, Slack @mention and `/pulse ask` |
 | 4 Reports | Done | Six templates, cron tick for briefings and recaps |
 | 5 Pilot readiness | Partial | Dockerfile done and smoke-tested. Org deploy config, pilot instrumentation, journey test pending |
