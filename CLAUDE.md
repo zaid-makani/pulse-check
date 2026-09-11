@@ -112,6 +112,8 @@ personal machine its email was changed to his Gmail to match Slack.
 
 ## What the org must provision (in blocking order)
 
+Step-by-step, with manifests and the IT ticket wording: `docs/PROVISIONING.md`.
+
 1. Postgres 15/16 with the `vector` extension permitted and a DB user allowed
    to `CREATE EXTENSION` (or the DBA pre-creates it). The first migration
    creates the extension and fails without it.
