@@ -26,6 +26,8 @@ async function catchUpDms(web: WebClient, since: number) {
     for (const m of (hist.messages ?? []).reverse()) {
       if (!m.ts || !m.user || m.bot_id || (m.subtype && m.subtype !== 'file_share')) continue
       if (seen.has(m.ts)) continue
+      // Already answered in a thread (questions are not stored, so this is their dedupe)
+      if ((m as { reply_count?: number }).reply_count) { seen.add(m.ts); continue }
       const already = await prisma.update.findFirst({ where: { slackChannelId: ch.id, slackTs: m.ts }, select: { id: true } })
       if (already) { seen.add(m.ts); continue }
       seen.add(m.ts)
@@ -86,7 +88,7 @@ async function main() {
   console.log('PulseCheck Slack bot connected over Socket Mode. DM it, mention it, or use /pulse.')
 
   // Safety net: catch up on the last hour now, then poll.
-  let since = Math.floor(Date.now() / 1000) - 3600
+  let since = Math.floor(Date.now() / 1000) - 900
   const tick = async () => {
     try {
       await catchUpDms(web, since)

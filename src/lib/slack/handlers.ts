@@ -182,6 +182,19 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   const hasText = !!body
   const replyTo = ev.thread_ts ?? ev.ts
 
+  // Acknowledge at once; the real confirmation replaces this message when ready.
+  let ackTs: string | undefined
+  try {
+    const ack = await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: spoken && !hasText ? `_Heard you. Reading it…_` : `_Reading that…_` })
+    ackTs = ack.ts
+  } catch {
+    ackTs = undefined
+  }
+  const finish = async (text: string) => {
+    if (ackTs) await slack().chat.update({ channel: ev.channel, ts: ackTs, text })
+    else await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text })
+  }
+
   if (fixMatch) {
     const since = new Date(Date.now() - 36 * 3_600_000)
     const latest = await prisma.update.findFirst({ where: { userId: user.id, createdAt: { gte: since }, supersededBy: null }, orderBy: { createdAt: 'desc' } })
@@ -189,7 +202,7 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
       await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: `Nothing recent to fix, so I'll take that as a new update.` })
     } else {
       const fixed = await reextractUpdate(latest.id, text)
-      await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: confirmationText(fixed, team.name) })
+      await finish(confirmationText(fixed, team.name))
       return
     }
   }
@@ -205,7 +218,7 @@ export async function handleDirectMessage(ev: SlackMessageEvent) {
   })
   const prefix = !hasText && spoken ? `_Heard:_ "${spoken.slice(0, 300)}"\n\n` : ''
   console.log('[slack] replying in', ev.channel)
-  await slack().chat.postMessage({ channel: ev.channel, thread_ts: replyTo, text: prefix + confirmationText(update, team.name) })
+  await finish(prefix + confirmationText(update, team.name))
   console.log('[slack] replied')
 }
 
