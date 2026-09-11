@@ -159,7 +159,7 @@ async function afterIngest(
     const vec = await embed(embeddingText(rawText, signals), { teamId, userId })
     await setUpdateEmbedding(updateId, vec)
     const { linkUpdateToThreads } = await import('@/lib/threads')
-    await linkUpdateToThreads({ updateId, teamId, userId, rawText, signals, embedding: vec })
+    await linkUpdateToThreads({ updateId, teamId, userId, rawText, signals, embedding: vec, deferRefresh: true })
   } catch (err) {
     // Enrichment failures must not lose the update itself.
     console.error('afterIngest failed for', updateId, err)

@@ -8,7 +8,7 @@ export const EMBED_DIM = 1536
 
 let _openai: OpenAI | null = null
 function openai() {
-  if (!_openai) _openai = new OpenAI()
+  if (!_openai) _openai = new OpenAI({ timeout: 60_000, maxRetries: 2 })
   return _openai
 }
 

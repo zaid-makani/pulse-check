@@ -49,7 +49,9 @@ export async function linkUpdateToThreads(input: {
   rawText: string
   signals: Signals
   embedding: number[]
-}): Promise<void> {
+  /** When true, rolling summaries are refreshed after this returns rather than before. */
+  deferRefresh?: boolean
+}): Promise<string[]> {
   const { updateId, teamId, userId, signals } = input
 
   const [near, recent] = await Promise.all([
@@ -65,7 +67,7 @@ export async function linkUpdateToThreads(input: {
   for (const t of [...near, ...recent]) candidates.set(t.id, t)
 
   const workItems = signals.workItems.length > 0 ? signals.workItems : [signals.summary].filter(Boolean)
-  if (workItems.length === 0) return
+  if (workItems.length === 0) return []
 
   const candidateText =
     candidates.size === 0
@@ -128,15 +130,21 @@ export async function linkUpdateToThreads(input: {
     touched.add(threadId)
   }
 
-  for (const id of touched) {
-    try {
-      console.log('[threads] refreshing', id)
-      await refreshThread(id, { teamId, userId })
-      console.log('[threads] refreshed', id)
-    } catch (err) {
-      console.error('refreshThread failed', id, err)
+  const ids = [...touched]
+  const refreshAll = async () => {
+    for (const id of ids) {
+      try {
+        console.log('[threads] refreshing', id)
+        await refreshThread(id, { teamId, userId })
+        console.log('[threads] refreshed', id)
+      } catch (err) {
+        console.error('refreshThread failed', id, err)
+      }
     }
   }
+  if (input.deferRefresh) void refreshAll()
+  else await refreshAll()
+  return ids
 }
 
 // ---------------------------------------------------------------------------
