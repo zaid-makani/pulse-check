@@ -110,6 +110,28 @@ personal machine its email was changed to his Gmail to match Slack.
 - Questions typed or spoken to the bot are answered, not recorded; the
   heuristic falls back to a one-second model intent check.
 
+## What the org must provision (in blocking order)
+
+1. Postgres 15/16 with the `vector` extension permitted and a DB user allowed
+   to `CREATE EXTENSION` (or the DBA pre-creates it). The first migration
+   creates the extension and fails without it.
+2. Secrets in the deploy environment per `.env.example`: DATABASE_URL,
+   NEXTAUTH_URL (public URL), NEXTAUTH_SECRET, ANTHROPIC_API_KEY,
+   OPENAI_API_KEY (Whisper + embeddings only; swappable if the org has no
+   OpenAI key), CRON_SECRET, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET,
+   PULSE_KEY_OWNER. No SLACK_APP_TOKEN in production.
+3. A scheduler calling `POST /api/cron/tick` every 15 minutes with
+   `Authorization: Bearer $CRON_SECRET` (a Kubernetes CronJob running curl).
+4. An HTTPS hostname before the Slack app can be completed: Slack pushes to
+   `/api/slack/events` and `/api/slack/commands`. Order is Postgres, deploy,
+   then Slack.
+5. Slack scope `users:read.email` (matches people by profile email). If IT
+   refuses it, add a DM-once linking fallback.
+6. Resend (RESEND_API_KEY) is optional; without it password reset emails do
+   not send. Fine for a pilot with passwords set by hand.
+
+Not needed: Redis, a queue, object storage, a separate vector service.
+
 ## Next on the office laptop
 
 1. `git checkout master && git merge --ff-only v2`, push to the org Bitbucket.

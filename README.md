@@ -28,4 +28,6 @@ Slack (optional, see `slack/README.md`): create the app from `slack/manifest.jso
 
 ## Deploying
 
+Blocking order for a new environment: Postgres with the `vector` extension, then the deploy with secrets, then a scheduler for `/api/cron/tick`, then the Slack app (it needs the HTTPS hostname). Full checklist in `CLAUDE.md`.
+
 `Dockerfile` builds a standalone image that runs migrations on start. Required env: `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, and the Slack tokens.
